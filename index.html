@@ -1,0 +1,1706 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Giries Abu Ayoub is an applied AI and computer vision researcher working on few-shot learning, multimodal representations, and efficient generative inference.">
+  <meta name="theme-color" content="#0c0910">
+  <meta property="og:title" content="Giries Abu Ayoub | Applied AI Researcher">
+  <meta property="og:description" content="Research in few-shot learning, multimodal representations, and efficient generative inference.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://jerryaa98.github.io/">
+  <meta property="og:image" content="https://jerryaa98.github.io/images/Giries.jpeg">
+  <title>Giries Abu Ayoub</title>
+
+  <!-- Apply the saved theme before first paint so there is no flash -->
+  <script>
+    (function () {
+      var theme = 'dark';
+      try { theme = localStorage.getItem('theme') || 'dark'; } catch (e) {}
+      document.documentElement.setAttribute('data-theme', theme);
+      document.documentElement.classList.add('js');
+    })();
+  </script>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    /* ============================= Theme =============================
+       Palette borrowed from the "magma" spectrogram colormap:
+       violet -> magenta -> coral -> amber. */
+    :root {
+      --bg: #faf6f1;
+      --bg-soft: #f1e9e1;
+      --panel: rgba(255, 251, 247, 0.74);
+      --panel-strong: rgba(255, 252, 249, 0.93);
+      --border: rgba(58, 28, 44, 0.12);
+      --text: #2e2329;
+      --text-soft: #6f5d67;
+      --title: #1b1117;
+      --accent: #c8481a;
+      --accent-2: #b0306c;
+      --accent-3: #d98a0b;
+      --accent-soft: rgba(200, 72, 26, 0.10);
+      --shadow: 0 20px 50px rgba(70, 30, 40, 0.13);
+      --shadow-soft: 0 8px 24px rgba(70, 30, 40, 0.08);
+      --glow: rgba(200, 72, 26, 0.26);
+      --pre-bg: rgba(58, 28, 44, 0.05);
+    }
+    html[data-theme="dark"] {
+      --bg: #0c0910;
+      --bg-soft: #151019;
+      --panel: rgba(27, 19, 32, 0.62);
+      --panel-strong: rgba(30, 21, 36, 0.9);
+      --border: rgba(255, 184, 150, 0.13);
+      --text: #e5d9dc;
+      --text-soft: #a8959f;
+      --title: #fff3ec;
+      --accent: #ff8a5c;
+      --accent-2: #e8559a;
+      --accent-3: #ffc861;
+      --accent-soft: rgba(255, 138, 92, 0.13);
+      --shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+      --shadow-soft: 0 10px 28px rgba(0, 0, 0, 0.38);
+      --glow: rgba(255, 120, 90, 0.4);
+      --pre-bg: rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: "Inter", "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.65;
+      color: var(--text);
+      background: var(--bg);
+      transition: background 0.5s ease, color 0.5s ease;
+      overflow-x: hidden;
+    }
+
+    h1, h2, h3, .brand { font-family: "Sora", "Inter", sans-serif; color: var(--title); }
+
+    a { color: var(--accent); text-decoration: none; transition: color 0.2s ease; }
+    a:hover { color: var(--accent-2); }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+    ::selection { background: var(--accent-2); color: #fff; }
+
+    /* ============================= 3D canvas ============================= */
+    #bg3d {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      display: block;
+      pointer-events: none;
+    }
+    .bg-vignette {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background: radial-gradient(ellipse at 50% 0%, transparent 40%, var(--bg) 130%);
+      opacity: 0.85;
+    }
+
+    .content { position: relative; z-index: 2; }
+
+    /* ============================= Nav ============================= */
+    nav {
+      position: fixed;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: var(--panel-strong);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      white-space: nowrap;
+      max-width: calc(100vw - 20px);
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    nav::-webkit-scrollbar { display: none; }
+    nav .brand {
+      font-weight: 700;
+      font-size: 15px;
+      padding: 6px 14px 6px 8px;
+      background: linear-gradient(120deg, var(--accent-3), var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    nav a.navlink {
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--text-soft);
+      padding: 7px 13px;
+      border-radius: 999px;
+      transition: all 0.25s ease;
+    }
+    nav a.navlink:hover { color: var(--title); background: var(--accent-soft); }
+    #themeToggle {
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      margin-left: 6px;
+      padding: 0;
+      transition: transform 0.4s cubic-bezier(.34,1.56,.64,1), background 0.25s;
+      flex: 0 0 auto;
+    }
+    #themeToggle:hover { transform: rotate(40deg) scale(1.08); background: var(--accent-soft); }
+    #themeToggle .sun { display: none; }
+    html[data-theme="dark"] #themeToggle .sun { display: block; }
+    html[data-theme="dark"] #themeToggle .moon { display: none; }
+
+    /* ============================= Layout ============================= */
+    .wrap { max-width: 1060px; margin: 0 auto; padding: 0 22px; }
+
+    section { padding: 40px 0; }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 30px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin: 0 0 28px;
+    }
+    .section-title .num {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 14px;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 8px;
+    }
+    .section-title .aside { font-size: 15px; font-weight: 500; color: var(--text-soft); }
+    .section-title::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, var(--border), transparent);
+    }
+
+    /* ============================= Hero ============================= */
+    .hero {
+      position: relative;
+      min-height: 92vh;
+      display: flex;
+      align-items: center;
+      padding-top: 90px;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 300px minmax(0, 1fr);
+      gap: 54px;
+      align-items: center;
+      width: 100%;
+    }
+    .hero-text { min-width: 0; container-type: inline-size; }
+
+    @property --glow-angle {
+      syntax: "<angle>";
+      initial-value: 0deg;
+      inherits: false;
+    }
+
+    .portrait-scene { perspective: 900px; }
+    .portrait {
+      position: relative;
+      border-radius: 24px;
+      transform-style: preserve-3d;
+      transition: transform 0.18s ease-out;
+      will-change: transform;
+    }
+    .portrait-frame {
+      position: relative;
+      display: block;
+      overflow: hidden;
+      aspect-ratio: 1;
+      border-radius: 24px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      background: #000;
+    }
+    .portrait-frame img,
+    .portrait-frame canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .portrait-frame img { object-fit: cover; }
+    .portrait-frame canvas { z-index: 2; pointer-events: none; }
+    .portrait::before {
+      content: "";
+      position: absolute;
+      inset: -14px;
+      border-radius: 30px;
+      background: conic-gradient(from var(--glow-angle), var(--accent-3), var(--accent), var(--accent-2), #7b3fd0, var(--accent-3));
+      filter: blur(26px);
+      opacity: 0.45;
+      z-index: -1;
+      transform: translateZ(-60px);
+      transition: opacity 0.3s ease;
+      animation: glow-spin 10s linear infinite;
+    }
+    .portrait:hover::before { opacity: 0.65; }
+
+    .replay-button {
+      display: block;
+      margin: 30px auto 0;
+      padding: 4px 0;
+      border: 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      color: var(--text-soft);
+      background: transparent;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11.5px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      transition: color 0.2s ease, border-color 0.2s ease;
+    }
+    .replay-button:hover { color: var(--accent); border-color: var(--accent); }
+    @keyframes glow-spin { to { --glow-angle: 360deg; } }
+
+    /* One line at every width: the size follows the text column (cqi), with a vw fallback */
+    .hero h1 {
+      font-size: clamp(26px, 3.9vw, 56px);
+      font-size: min(60px, 8.3cqi);
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      white-space: nowrap;
+      margin: 0 0 14px;
+    }
+    .hero h1 .grad {
+      background: linear-gradient(110deg, var(--accent-3) 0%, var(--accent) 40%, var(--accent-2) 95%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero .role {
+      font-size: 18px;
+      color: var(--text-soft);
+      margin: 0 0 6px;
+      font-weight: 500;
+    }
+    .hero .email {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 13.5px;
+      color: var(--text-soft);
+      background: var(--accent-soft);
+      border: 1px dashed var(--border);
+      padding: 5px 12px;
+      border-radius: 8px;
+      display: inline-block;
+      margin: 10px 0 22px;
+    }
+    .hero .email:hover { color: var(--accent); }
+    .hero .bio { max-width: 640px; color: var(--text); }
+    .hero .bio p { margin: 0 0 14px; }
+
+    .interests { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+    .interests span {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-soft);
+      border: 1px solid var(--border);
+      background: var(--panel);
+      border-radius: 999px;
+      padding: 3px 11px;
+    }
+
+    .cta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 26px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 20px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 14.5px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--title);
+      backdrop-filter: blur(10px);
+      transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s;
+      box-shadow: var(--shadow-soft);
+    }
+    .btn svg { flex: 0 0 auto; }
+    .btn:hover { transform: translateY(-3px); box-shadow: 0 14px 34px var(--glow); color: var(--title); }
+    .btn.primary {
+      background: linear-gradient(120deg, var(--accent), var(--accent-2));
+      color: #fff;
+      border: none;
+    }
+    .btn.primary:hover { color: #fff; }
+
+    .scroll-hint {
+      position: absolute;
+      left: 50%;
+      bottom: 26px;
+      transform: translateX(-50%);
+      color: var(--text-soft);
+      font-size: 22px;
+      animation: bob 2s infinite ease-in-out;
+    }
+    @keyframes bob { 50% { transform: translate(-50%, 8px); } }
+
+    /* ============================= Cards ============================= */
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+    .tilt { will-change: transform; }
+
+    /* Experience */
+    .exp-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 22px;
+    }
+    .exp-card {
+      padding: 28px 24px;
+      text-align: center;
+    }
+    .exp-card:hover { border-color: var(--accent); box-shadow: 0 18px 44px var(--glow); }
+    .exp-card .logos {
+      height: 96px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    .exp-card .logos img {
+      max-height: 76px;
+      max-width: 82%;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 10px rgba(0,0,0,0.15));
+    }
+    html[data-theme="dark"] .exp-card .logos img {
+      background: rgba(255,255,255,0.94);
+      border-radius: 10px;
+      padding: 6px 10px;
+    }
+    .exp-card h3 { margin: 0 0 6px; font-size: 17px; }
+    .exp-card .role-line { color: var(--accent); font-weight: 600; font-size: 14px; margin: 0 0 4px; }
+    .exp-card .dates { color: var(--text-soft); font-size: 13px; margin: 0; }
+    .exp-card .desc { margin: 12px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--text); text-wrap: balance; }
+    .exp-card .roles { list-style: none; margin: 4px 0 0; padding: 0; }
+    .exp-card .roles li { padding: 7px 0; border-top: 1px solid var(--border); }
+    .exp-card .roles li:first-child { border-top: 0; padding-top: 0; }
+
+    /* Camtek card opens the wafer scan dialog; the whole card is the click target */
+    .exp-card.has-demo { position: relative; cursor: pointer; }
+    .demo-open {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 14px;
+      padding: 6px 13px;
+      font: 600 12.5px/1.2 "Inter", sans-serif;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: border-color 0.2s ease;
+    }
+    .demo-open::after { content: ""; position: absolute; inset: 0; border-radius: 20px; }
+    .exp-card.has-demo:hover .demo-open { border-color: var(--accent); }
+
+    .demo-dialog {
+      width: min(1120px, calc(100vw - 32px));
+      max-width: none;
+      max-height: calc(100vh - 32px);
+      max-height: calc(100dvh - 32px);
+      margin: auto;
+      padding: 0;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      overflow: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+    }
+    .demo-dialog::backdrop {
+      background: rgba(12, 9, 16, 0.55);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .demo-dialog[open] { animation: demo-in 0.38s cubic-bezier(.22,.85,.35,1); }
+    .demo-dialog[open]::backdrop { animation: demo-fade 0.38s ease; }
+    @keyframes demo-in { from { opacity: 0; transform: translateY(16px) scale(0.985); } }
+    @keyframes demo-fade { from { opacity: 0; } }
+    html:has(.demo-dialog[open]) { overflow: hidden; }
+
+    .demo-inner { padding: 22px 24px 18px; }
+    .demo-head { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
+    .demo-logo { flex: none; height: 46px; width: auto; }
+    html[data-theme="dark"] .demo-logo { background: rgba(255,255,255,0.94); border-radius: 10px; padding: 5px 9px; }
+    .demo-title { flex: 1; min-width: 0; }
+    .demo-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; }
+    .demo-title h2 { margin: 0; font-size: 22px; line-height: 1.2; letter-spacing: -0.3px; }
+    .demo-title p { margin: 2px 0 0; font-size: 14px; color: var(--text-soft); }
+    .demo-tag {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-soft);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 2px 9px;
+    }
+    .demo-close {
+      flex: none;
+      align-self: flex-start;
+      width: 36px; height: 36px;
+      padding: 0;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.2s ease, color 0.2s ease, transform 0.3s ease;
+    }
+    .demo-close:hover { background: var(--accent-soft); color: var(--accent); transform: rotate(90deg); }
+    .demo-frame { display: block; width: 100%; height: 640px; border: 0; background: var(--bg); }
+
+    /* Timeline (teaching, recognition) */
+    .timeline { position: relative; margin: 0; padding: 6px 0 6px 26px; list-style: none; }
+    .timeline::before {
+      content: "";
+      position: absolute;
+      left: 6px; top: 8px; bottom: 8px;
+      width: 2px;
+      background: linear-gradient(var(--accent-3), var(--accent), var(--accent-2));
+      border-radius: 2px;
+      opacity: 0.55;
+    }
+    .timeline li { position: relative; padding: 9px 0 9px 12px; }
+    .timeline li::before {
+      content: "";
+      position: absolute;
+      left: -25.5px; top: 19px;
+      width: 11px; height: 11px;
+      border-radius: 50%;
+      background: var(--bg);
+      border: 2.5px solid var(--accent);
+      box-shadow: 0 0 12px var(--glow);
+    }
+    .timeline .years {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12.5px;
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 2px 9px;
+      border-radius: 6px;
+      margin-right: 10px;
+      white-space: nowrap;
+    }
+    .timeline .note { color: var(--text-soft); }
+
+    /* Education */
+    .edu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px; }
+    .edu-card { padding: 24px 26px; }
+    .edu-card:hover { border-color: var(--accent); box-shadow: 0 18px 44px var(--glow); }
+    .edu-card .meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .edu-card .meta span {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border-radius: 6px;
+      padding: 2px 9px;
+    }
+    .edu-card h3 { margin: 0 0 4px; font-size: 18px; }
+    .edu-card .school { margin: 0; color: var(--accent-2); font-weight: 600; font-size: 14.5px; }
+    .edu-card .thesis { margin: 10px 0 0; font-size: 14px; color: var(--text-soft); }
+
+    /* Publications */
+    .sub-label {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 13px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--accent-2);
+      margin: 44px 0 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .sub-label::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+    .sub-label:first-of-type { margin-top: 0; }
+
+    .pub {
+      display: grid;
+      grid-template-columns: 250px 1fr;
+      gap: 26px;
+      padding: 24px;
+      margin-bottom: 22px;
+      align-items: start;
+    }
+    .pub:hover { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 20px 48px var(--glow); }
+
+    .pub-thumb-scene { perspective: 700px; }
+    .pub-thumb {
+      display: block;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #fff;
+      transform-style: preserve-3d;
+      transition: transform 0.18s ease-out;
+      box-shadow: var(--shadow-soft);
+    }
+    .pub-thumb img { width: 100%; height: auto; display: block; }
+    .pub-thumb .placeholder {
+      height: 150px;
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 2px;
+      font-family: "Sora", sans-serif;
+      font-weight: 600;
+      font-size: 16px;
+      color: var(--text-soft);
+      background:
+        radial-gradient(circle at 25% 25%, var(--accent-soft), transparent 60%),
+        radial-gradient(circle at 80% 75%, rgba(232, 85, 154, 0.14), transparent 55%),
+        var(--bg-soft);
+    }
+    .pub-thumb .placeholder b { font-size: 40px; line-height: 1; color: var(--accent); }
+
+    .pub h3 { margin: 0 0 8px; font-size: 18.5px; line-height: 1.4; letter-spacing: -0.2px; }
+    .pub h3 code { font-family: "JetBrains Mono", monospace; font-size: 0.92em; color: var(--accent); }
+    .pub .authors { margin: 0 0 8px; font-size: 14.5px; color: var(--text-soft); }
+    .pub .authors .me { color: var(--title); font-weight: 600; border-bottom: 2px solid var(--accent); }
+    .pub .venue {
+      display: inline-block;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px 12px;
+      margin-bottom: 12px;
+    }
+
+    .pub-links { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+    .chip {
+      font-size: 13px;
+      font-weight: 500;
+      font-family: "Inter", sans-serif;
+      color: var(--text);
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 5px 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+    .chip[aria-expanded="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .fold {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows 0.4s ease;
+    }
+    .fold > div { overflow: hidden; }
+    .fold.open { grid-template-rows: 1fr; }
+    .fold .abs {
+      font-size: 14px;
+      color: var(--text-soft);
+      text-align: justify;
+      border-left: 3px solid var(--accent);
+      padding: 2px 0 2px 14px;
+      margin: 12px 0 4px;
+    }
+    .fold pre {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.55;
+      background: var(--pre-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin: 12px 0 4px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--text);
+    }
+
+    /* ============================= Footer ============================= */
+    footer {
+      padding: 46px 0 34px;
+      text-align: center;
+      color: var(--text-soft);
+      font-size: 13.5px;
+    }
+    footer .line {
+      width: 90px; height: 3px;
+      margin: 0 auto 20px;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--accent-3), var(--accent), var(--accent-2));
+    }
+
+    /* ============================= Reveal on scroll ============================= */
+    .js .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 0.7s ease, transform 0.7s cubic-bezier(.22,.85,.35,1);
+      transition-delay: var(--reveal-delay, 0ms);
+    }
+    .js .reveal.in { opacity: 1; transform: none; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .js .reveal { opacity: 1; transform: none; transition: none; }
+      html { scroll-behavior: auto; }
+      .scroll-hint, .portrait::before { animation: none; }
+      .demo-dialog[open], .demo-dialog[open]::backdrop { animation: none; }
+    }
+
+    /* ============================= Responsive ============================= */
+    @media (max-width: 860px) {
+      .hero { padding-top: 110px; min-height: unset; }
+      .hero-grid { grid-template-columns: 1fr; gap: 36px; }
+      .portrait-scene { width: min(300px, 100%); margin: 0 auto; }
+      .hero h1, .hero .role { text-align: center; }
+      .hero .email { display: table; margin-inline: auto; }
+      .interests, .cta { justify-content: center; }
+      .scroll-hint { display: none; }
+      .pub { grid-template-columns: 1fr; }
+      .pub-thumb-scene { max-width: 330px; margin: 0 auto; }
+      .section-title { font-size: 25px; }
+      nav .brand { display: none; }
+      nav a.navlink { padding: 7px 9px; }
+    }
+    @media (max-width: 520px) {
+      nav a.navlink[href="#about"] { display: none; }
+      .edu-grid { grid-template-columns: 1fr; }
+      .timeline .years { display: inline-block; margin-bottom: 2px; }
+      .demo-inner { padding: 14px 8px 8px; }
+      .demo-head { padding: 0 4px; }
+      .demo-logo { display: none; }
+      .demo-title h2 { font-size: 19px; }
+      .demo-title p { font-size: 13px; }
+    }
+    @media (max-width: 420px) {
+      nav a.navlink[href="#teaching"] { display: none; }
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="bg3d" aria-hidden="true"></canvas>
+  <div class="bg-vignette" aria-hidden="true"></div>
+
+  <nav aria-label="Primary">
+    <span class="brand">GA</span>
+    <a class="navlink" href="#about">About</a>
+    <a class="navlink" href="#experience">Experience</a>
+    <a class="navlink" href="#teaching">Teaching</a>
+    <a class="navlink" href="#education">Education</a>
+    <a class="navlink" href="#research">Research</a>
+    <button id="themeToggle" type="button" title="Toggle theme" aria-label="Toggle color theme">
+      <svg class="sun" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>
+      <svg class="moon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.6A8.2 8.2 0 0 1 9.4 4a8.2 8.2 0 1 0 10.6 10.6Z"/></svg>
+    </button>
+  </nav>
+
+  <div class="content">
+
+    <!-- =================== Hero / Bio =================== -->
+    <header class="hero" id="about">
+      <div class="wrap hero-grid">
+        <div class="portrait-scene">
+          <div class="portrait" id="portrait">
+            <a class="portrait-frame" href="images/Giries.jpeg" aria-label="Open the full portrait of Giries Abu Ayoub">
+              <img src="images/Giries.jpeg" alt="Portrait of Giries Abu Ayoub" width="400" height="400" id="portraitImg">
+              <canvas width="320" height="320" aria-hidden="true" id="portraitNoise"></canvas>
+            </a>
+          </div>
+          <button class="replay-button" type="button" id="replayDenoise">↻ Replay denoising</button>
+        </div>
+
+        <div class="hero-text">
+          <h1>Hi, I'm <span class="grad">Giries Abu Ayoub</span></h1>
+          <p class="role">Applied AI Researcher · Computer Vision &amp; Audio</p>
+          <a class="email" href="mailto:jerryabuayob@gmail.com">jerryabuayob@gmail.com</a>
+
+          <div class="bio">
+            <p>
+              I am an Applied AI Researcher at Camtek, working on computer vision and deep learning for
+              semiconductor inspection and metrology. I completed my B.Sc. and M.Sc. in Computer Science
+              at the University of Haifa. During my M.Sc., I worked in the Computer Vision Lab under the supervision of
+              <a href="https://www.cs.haifa.ac.il/~skorman/" target="_blank" rel="noopener noreferrer">Dr. Simon Korman</a>.
+            </p>
+            <p>
+              My research focuses on learning robust models from limited data. My work spans few-shot
+              adaptation, multimodal representation learning across vision, text, and audio, and efficient
+              inference for generative models.
+            </p>
+            <div class="interests" aria-label="Research interests">
+              <span>Few-shot learning</span>
+              <span>Computer vision</span>
+              <span>Multimodal learning</span>
+              <span>Representation learning</span>
+              <span>Efficient generative inference</span>
+            </div>
+          </div>
+
+          <div class="cta">
+            <a class="btn primary" href="files/CV.pdf">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6 2.8h8.2L19 7.6v13.6H6Z"/><path d="M14 2.8v5h5M9 12.5h7M9 16h7"/></svg>
+              Curriculum Vitae
+            </a>
+            <a class="btn" href="https://scholar.google.com/citations?user=oH0Z6nMAAAAJ&amp;hl=en" target="_blank" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m2.5 9.3 9.5-5 9.5 5-9.5 5-9.5-5Z"/><path d="M6.2 11.3v4.1c0 1.65 2.6 3 5.8 3s5.8-1.35 5.8-3v-4.1M21.5 9.3v6"/></svg>
+              Google Scholar
+            </a>
+            <a class="btn" href="https://www.linkedin.com/in/giries-abu-ayoub-b75b4b202/" target="_blank" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M5.4 7.3a2.3 2.3 0 1 0 0-4.6 2.3 2.3 0 0 0 0 4.6ZM3.4 21h4V9h-4v12Zm6.5 0h4v-6.7c0-1.76.33-3.47 2.52-3.47 2.16 0 2.18 2.02 2.18 3.58V21h4v-7.43c0-3.65-.79-6.46-5.05-6.46-2.04 0-3.42 1.12-3.98 2.18h-.06V9H9.9v12Z"/></svg>
+              LinkedIn
+            </a>
+            <a class="btn" href="https://github.com/Jerryaa98" target="_blank" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.87c-2.78.6-3.37-1.18-3.37-1.18-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.35 1.09 2.92.83.09-.65.35-1.09.64-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.6 9.6 0 0 1 12 6.82a9.6 9.6 0 0 1 2.5.34c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.86v2.76c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></svg>
+              GitHub
+            </a>
+          </div>
+        </div>
+      </div>
+      <div class="scroll-hint" aria-hidden="true">▾</div>
+    </header>
+
+    <!-- =================== Experience =================== -->
+    <section id="experience">
+      <div class="wrap">
+        <h2 class="section-title reveal"><span class="num">01</span>Experience</h2>
+        <div class="exp-grid">
+          <div class="card exp-card tilt reveal has-demo">
+            <div class="logos"><img src="images/camtek.svg" alt="Camtek" loading="lazy"></div>
+            <h3>Camtek</h3>
+            <p class="role-line">Applied AI Researcher · Full-time</p>
+            <p class="dates">Aug 2026 — Present</p>
+            <p class="desc">I work on wafer inspection and defect detection using computer vision and deep learning.</p>
+            <button class="demo-open" type="button" id="camtekOpen" aria-haspopup="dialog" aria-controls="camtekDialog" aria-label="Demo: wafer inspection animation">
+              <svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path fill="currentColor" d="M4 2.5 13 8l-9 5.5Z"/></svg>
+              Demo
+            </button>
+          </div>
+
+          <div class="card exp-card tilt reveal">
+            <div class="logos"><img src="images/university-of-haifa.jpg" alt="University of Haifa" loading="lazy"></div>
+            <h3>University of Haifa</h3>
+            <ul class="roles">
+              <li><p class="role-line">Assistant Researcher · CV Lab</p><p class="dates">May 2024 — Jul 2026</p></li>
+              <li><p class="role-line">Teaching Assistant</p><p class="dates">Mar 2023 — Jul 2026</p></li>
+              <li><p class="role-line">Software Developer · Robotics Lab</p><p class="dates">Sep 2022 — Aug 2023</p></li>
+            </ul>
+          </div>
+
+          <div class="card exp-card tilt reveal">
+            <div class="logos"><img src="images/auura.jpeg" alt="Auura" loading="lazy"></div>
+            <h3>Auura Inc.</h3>
+            <p class="role-line">ML / Backend Engineer · Internship</p>
+            <p class="dates">Jun 2025 — Oct 2025</p>
+            <p class="desc">I worked on an AI-enhanced web scraping system for curating and classifying funding opportunities.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================== Teaching =================== -->
+    <section id="teaching">
+      <div class="wrap">
+        <h2 class="section-title reveal"><span class="num">02</span>Teaching <span class="aside">@ University of Haifa</span></h2>
+        <ul class="timeline">
+          <li class="reveal"><span class="years">2023–2026</span> Lead tutor, Linear Algebra <span class="note">· 7 semesters</span></li>
+          <li class="reveal"><span class="years">2024–2026</span> Lead tutor, Deep Learning / Computer Vision <span class="note">· 3 semesters</span></li>
+          <li class="reveal"><span class="years">2025–2026</span> Lead tutor, Introduction to Computer Science in Python <span class="note">· 2 semesters</span></li>
+          <li class="reveal"><span class="years">2023</span> Tutor, Introduction to C <span class="note">· 2 semesters</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- =================== Education =================== -->
+    <section id="education">
+      <div class="wrap">
+        <h2 class="section-title reveal"><span class="num">03</span>Education</h2>
+        <div class="edu-grid">
+          <article class="card edu-card tilt reveal">
+            <div class="meta"><span>2023 — 2026</span><span>GPA 94</span></div>
+            <h3>M.Sc. in Computer Science</h3>
+            <p class="school">University of Haifa</p>
+            <p class="thesis">Thesis: Few-Shot Feature Adaptation via Balanced Pairwise Affinities on Frozen Vision Transformers</p>
+          </article>
+          <article class="card edu-card tilt reveal">
+            <div class="meta"><span>2019 — 2023</span><span>GPA 84</span></div>
+            <h3>B.Sc. in Computer Science</h3>
+            <p class="school">University of Haifa</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================== Research =================== -->
+    <section id="research">
+      <div class="wrap">
+        <h2 class="section-title reveal"><span class="num">04</span>Research</h2>
+
+        <!-- ---------- Conference papers ---------- -->
+        <div class="sub-label reveal">Conference Papers</div>
+
+        <article class="card pub reveal">
+          <div class="pub-thumb-scene">
+            <a class="pub-thumb tilt" href="images/axon.png" target="_blank" rel="noopener noreferrer" aria-label="Open the AXON pipeline figure">
+              <img src="images/axon.png" alt="AXON pipeline selecting supportive anchor tokens during diffusion language-model decoding" width="1061" height="536" loading="lazy">
+            </a>
+          </div>
+          <div class="pub-body">
+            <h3>Supportive Token Revealing for Fast Diffusion Language Model Decoding</h3>
+            <p class="authors"><span class="me">Giries Abu Ayoub</span>, Mario Barbara, Lluís Pastor-Pérez, Tanja Bien, Aneesh Barthakur, Alaa Maalouf, Loay Mualem</p>
+            <span class="venue">AACL-IJCNLP 2026</span>
+            <div class="pub-links">
+              <a class="chip" href="https://arxiv.org/abs/2606.04236" target="_blank" rel="noopener noreferrer">paper ↗</a>
+              <a class="chip" href="https://github.com/Jerryaa98/AXON" target="_blank" rel="noopener noreferrer">code ↗</a>
+              <button class="chip" type="button" data-toggle="axon_abs" aria-expanded="false">abstract</button>
+              <button class="chip" type="button" data-toggle="axon_bib" aria-expanded="false">bibtex</button>
+              <a class="chip" href="https://jerryaa98.github.io/AXON-website/" target="_blank" rel="noopener noreferrer">website ↗</a>
+            </div>
+            <div class="fold" id="axon_abs"><div><p class="abs">Discrete diffusion language models can generate text efficiently by updating multiple masked positions in parallel, but this introduces a quality–latency trade-off. We propose AXON, a training-free module that monitors uncertain masked tokens and selects confident anchors that can support later denoising. Across reasoning and code-generation benchmarks, AXON improves the quality–latency trade-off of existing parallel decoders, often reducing the number of function evaluations while maintaining or improving accuracy.</p></div></div>
+            <div class="fold" id="axon_bib"><div><pre>@article{ayoub2026supportive,
+  title={Supportive Token Revealing for Fast Diffusion Language Model Decoding},
+  author={Ayoub, Giries Abu and Barbara, Mario and Pastor-P{\'e}rez, Llu{\'\i}s and Bien, Tanja and Barthakur, Aneesh and Maalouf, Alaa and Mualem, Loay},
+  journal={arXiv preprint arXiv:2606.04236},
+  year={2026}
+}</pre></div></div>
+          </div>
+        </article>
+
+        <!-- ---------- Thesis ---------- -->
+        <div class="sub-label reveal">M.Sc. Thesis</div>
+
+        <article class="card pub reveal">
+          <div class="pub-thumb-scene">
+            <a class="pub-thumb tilt" href="images/bpa.png" target="_blank" rel="noopener noreferrer" aria-label="Open the Balanced Pairwise Affinities pipeline figure">
+              <img src="images/bpa.png" alt="Pipeline adapting frozen vision-transformer features with balanced pairwise affinities" width="1600" height="900" loading="lazy">
+            </a>
+          </div>
+          <div class="pub-body">
+            <h3>Few-Shot Feature Adaptation via Balanced Pairwise Affinities on Frozen Vision Transformers</h3>
+            <p class="authors"><span class="me">Giries Abu Ayoub</span> · Advisor: <a href="https://www.cs.haifa.ac.il/~skorman/" target="_blank" rel="noopener noreferrer">Dr. Simon Korman</a></p>
+            <span class="venue">M.Sc. Thesis · University of Haifa · 2026</span>
+            <div class="pub-links">
+              <a class="chip" href="https://haifa.alma.exlibrisgroup.com/discovery/delivery/972HAI_MAIN:HAU/12405310250002791" target="_blank" rel="noopener noreferrer">thesis ↗</a>
+              <button class="chip" type="button" data-toggle="bpa_abs" aria-expanded="false">abstract</button>
+              <button class="chip" type="button" data-toggle="bpa_bib" aria-expanded="false">bibtex</button>
+            </div>
+            <div class="fold" id="bpa_abs"><div><p class="abs">Few-shot classifiers built on frozen vision transformers remain sensitive to feature bias and geometric misalignment, particularly under domain shift. This work introduces a geometry-aware task adaptation framework that models balanced pairwise affinities through entropy-regularized optimal transport and a lightweight adapter. The approach reshapes the representation space without updating the backbone and extends naturally to transductive alignment between image and text embeddings, improving few-shot and zero-shot inference across diverse feature extractors.</p></div></div>
+            <div class="fold" id="bpa_bib"><div><pre>@mastersthesis{ayoub2026fewshot,
+  title={Few-Shot Feature Adaptation via Balanced Pairwise Affinities on Frozen Vision Transformers},
+  author={Ayoub, Giries Abu},
+  school={University of Haifa},
+  year={2026}
+}</pre></div></div>
+          </div>
+        </article>
+
+        <!-- ---------- Preprints ---------- -->
+        <div class="sub-label reveal">Preprints &amp; Under Review</div>
+
+        <article class="card pub reveal">
+          <div class="pub-thumb-scene">
+            <a class="pub-thumb tilt" href="images/spur-audio.png" target="_blank" rel="noopener noreferrer" aria-label="Open the SpurAudio pipeline figure">
+              <img src="images/spur-audio.png" alt="SpurAudio benchmark pipeline across foreground events and background contexts" width="1600" height="900" loading="lazy">
+            </a>
+          </div>
+          <div class="pub-body">
+            <h3>SpurAudio: A Benchmark for Studying Shortcut Learning in Few-Shot Audio Classification</h3>
+            <p class="authors"><span class="me">Giries Abu Ayoub</span>, Morad Tukan, Loay Mualem</p>
+            <span class="venue">Preprint · 2026 · under review</span>
+            <div class="pub-links">
+              <a class="chip" href="https://arxiv.org/abs/2605.13672" target="_blank" rel="noopener noreferrer">paper ↗</a>
+              <a class="chip" href="https://github.com/Jerryaa98/SpurAudio" target="_blank" rel="noopener noreferrer">code ↗</a>
+              <button class="chip" type="button" data-toggle="spur_abs" aria-expanded="false">abstract</button>
+              <button class="chip" type="button" data-toggle="spur_bib" aria-expanded="false">bibtex</button>
+            </div>
+            <div class="fold" id="spur_abs"><div><p class="abs">Few-shot classification is widely used for learning from limited labeled data, yet most evaluations implicitly assume that target concepts are independent of contextual cues. We introduce SpurAudio, a benchmark that leverages the natural separability of foreground events and background environments in audio to enable controlled evaluation of contextual shifts across support and query sets. We show that many state-of-the-art few-shot methods suffer severe performance degradation when background correlations are disrupted, including large pretrained audio foundation models. The results reveal systematic differences in how methods rely on context and motivate benchmarks that explicitly probe context dependence.</p></div></div>
+            <div class="fold" id="spur_bib"><div><pre>@article{ayoub2026spuraudio,
+  title={SpurAudio: A Benchmark for Studying Shortcut Learning in Few-Shot Audio Classification},
+  author={Ayoub, Giries Abu and Tukan, Morad and Mualem, Loay},
+  journal={arXiv preprint arXiv:2605.13672},
+  year={2026}
+}</pre></div></div>
+          </div>
+        </article>
+
+        <article class="card pub reveal">
+          <div class="pub-thumb-scene">
+            <a class="pub-thumb tilt" href="images/spectra.png" target="_blank" rel="noopener noreferrer" aria-label="Open the SPECTRA pipeline figure">
+              <img src="images/spectra.png" alt="SPECTRA pipeline for fully few-shot class-incremental audio classification" width="1331" height="757" loading="lazy">
+            </a>
+          </div>
+          <div class="pub-body">
+            <h3>SPECTRA: Subspace-Preserving Embedding Calibration, Transport, and Replay for Fully Few-Shot Class-Incremental Audio Classification</h3>
+            <p class="authors"><span class="me">Giries Abu Ayoub</span>, Loay Mualem, Simon Korman</p>
+            <span class="venue">Preprint · 2026 · under review</span>
+            <div class="pub-links">
+              <a class="chip" href="https://arxiv.org/abs/2608.25054" target="_blank" rel="noopener noreferrer">paper ↗</a>
+              <button class="chip" type="button" data-toggle="spectra_abs" aria-expanded="false">abstract</button>
+              <button class="chip" type="button" data-toggle="spectra_bib" aria-expanded="false">bibtex</button>
+            </div>
+            <div class="fold" id="spectra_abs"><div><p class="abs">Fully few-shot class-incremental audio classification requires recognizing new classes from only a handful of examples per session without forgetting earlier classes or relying on a large base dataset. SPECTRA combines a lightweight embedding adapter, exemplar-free subspace feature replay, and transductive optimal-transport prototype refinement. Across NSynth-100, FSC-89, and LS-100, it improves average accuracy and reduces forgetting over current baselines.</p></div></div>
+            <div class="fold" id="spectra_bib"><div><pre>@article{ayoub2026spectra,
+  title={SPECTRA: Subspace-Preserving Embedding Calibration, Transport, and Replay for Fully Few-Shot Class-Incremental Audio Classification},
+  author={Ayoub, Giries Abu and Mualem, Loay and Korman, Simon},
+  journal={arXiv preprint arXiv:2608.25054},
+  year={2026}
+}</pre></div></div>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- =================== Recognition =================== -->
+    <section id="recognition">
+      <div class="wrap">
+        <h2 class="section-title reveal"><span class="num">05</span>Recognition</h2>
+        <ul class="timeline">
+          <li class="reveal"><span class="years">2023–2024</span> Excellent M.Sc. Research Student grant award</li>
+          <li class="reveal"><span class="years">2022–2023</span> Excellence in Teaching Assistance award and grant</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- =================== Footer =================== -->
+    <footer>
+      <div class="line"></div>
+      <p>© <span id="year">2026</span> Giries Abu Ayoub · <a href="mailto:jerryabuayob@gmail.com">jerryabuayob@gmail.com</a><br>
+        Layout inspired by <a href="https://loaym.github.io/" target="_blank" rel="noopener noreferrer">Loay Mualem's homepage</a>.</p>
+    </footer>
+  </div>
+
+  <!-- =================== Camtek: wafer scan demo =================== -->
+  <dialog class="demo-dialog" id="camtekDialog" aria-labelledby="camtekDialogTitle">
+    <div class="demo-inner">
+      <header class="demo-head">
+        <img class="demo-logo" src="images/camtek.svg" alt="" width="90" height="46">
+        <div class="demo-title">
+          <div class="demo-title-row">
+            <h2 id="camtekDialogTitle">Camtek</h2>
+            <span class="demo-tag">Simulated data</span>
+          </div>
+          <p>Computer vision and deep learning for semiconductor inspection and metrology.</p>
+        </div>
+        <button class="demo-close" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </header>
+      <iframe class="demo-frame" id="camtekFrame" title="Wafer inspection demo with simulated data"></iframe>
+    </div>
+  </dialog>
+
+  <script>
+    /* ============================= Theme toggle ============================= */
+    (function () {
+      var root = document.documentElement;
+      var meta = document.querySelector('meta[name="theme-color"]');
+      function syncMeta() {
+        meta.setAttribute('content', root.getAttribute('data-theme') === 'dark' ? '#0c0910' : '#faf6f1');
+      }
+      syncMeta();
+      document.getElementById('themeToggle').addEventListener('click', function () {
+        var theme = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        root.setAttribute('data-theme', theme);
+        try { localStorage.setItem('theme', theme); } catch (e) {}
+        syncMeta();
+        if (window.__updateSceneTheme) window.__updateSceneTheme();
+      });
+    })();
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    /* ============================= Camtek card -> wafer scan dialog =============================
+       The demo is its own page, loaded into the dialog in the current theme. It is unloaded
+       on close, so it never runs in the background and starts from the first scan each time. */
+    (function () {
+      var dialog = document.getElementById('camtekDialog');
+      var frame = document.getElementById('camtekFrame');
+      var open = document.getElementById('camtekOpen');
+      if (!dialog || !frame || !open) return;
+
+      open.addEventListener('click', function () {
+        if (typeof dialog.showModal !== 'function') { window.location.href = 'wafer-inspection-demo.html'; return; }
+        if (dialog.open) return;
+        var theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+        frame.src = 'wafer-inspection-demo.html?embed=1&theme=' + theme;
+        dialog.showModal();
+        if (window.__pauseScene) window.__pauseScene(true);   // the 3D background is hidden behind the blur; give the demo the GPU
+      });
+      dialog.querySelector('.demo-close').addEventListener('click', function () { dialog.close(); });
+      // close on a backdrop click, but not when a drag that started inside ends outside
+      var downOnBackdrop = false;
+      dialog.addEventListener('pointerdown', function (e) { downOnBackdrop = e.target === dialog; });
+      dialog.addEventListener('click', function (e) { if (downOnBackdrop && e.target === dialog) dialog.close(); });
+      dialog.addEventListener('close', function () {
+        frame.src = 'about:blank';
+        if (window.__pauseScene) window.__pauseScene(false);
+      });
+      // the demo reports its height (no inner scrollbar) and forwards Escape, which never reaches this page while focus is inside it
+      window.addEventListener('message', function (e) {
+        if (e.source !== frame.contentWindow || !e.data) return;
+        if (e.data.type === 'wafer-demo:close') dialog.close();
+        else if (e.data.type === 'wafer-demo:height') {
+          var h = Number(e.data.height);
+          if (h > 0 && h < 6000) frame.style.height = Math.ceil(h) + 'px';
+        }
+      });
+    })();
+
+    /* ============================= Abstract / bibtex toggles ============================= */
+    document.querySelectorAll('[data-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var fold = document.getElementById(btn.getAttribute('data-toggle'));
+        var open = fold.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+    });
+
+    /* ============================= Scroll reveal =============================
+       Elements that enter the viewport together are staggered. Once revealed,
+       the classes are removed so the hover/tilt transitions take over again. */
+    (function () {
+      var els = document.querySelectorAll('.reveal');
+      function settle(el) {
+        el.classList.remove('reveal', 'in');
+        el.style.removeProperty('--reveal-delay');
+      }
+      if (!('IntersectionObserver' in window) ||
+          window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        els.forEach(settle);
+        return;
+      }
+      var io = new IntersectionObserver(function (entries) {
+        var batch = 0;
+        entries.forEach(function (e) {
+          if (!e.isIntersecting) return;
+          var el = e.target;
+          io.unobserve(el);
+          el.style.setProperty('--reveal-delay', Math.min(batch++ * 90, 360) + 'ms');
+          el.addEventListener('transitionend', function done(ev) {
+            if (ev.target !== el || ev.propertyName !== 'opacity') return;
+            el.removeEventListener('transitionend', done);
+            settle(el);
+          });
+          el.classList.add('in');
+        });
+      }, { threshold: 0.08 });
+      els.forEach(function (el) { io.observe(el); });
+    })();
+
+    /* ============================= 3D tilt on cards & portrait ============================= */
+    (function () {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      if (window.matchMedia('(hover: none)').matches) return;
+
+      function attachTilt(el, maxDeg, lift) {
+        var frame = 0;
+        el.addEventListener('pointermove', function (ev) {
+          var r = el.getBoundingClientRect();
+          var x = (ev.clientX - r.left) / r.width - 0.5;
+          var y = (ev.clientY - r.top) / r.height - 0.5;
+          cancelAnimationFrame(frame);
+          frame = requestAnimationFrame(function () {
+            el.style.transform =
+              'perspective(800px) rotateY(' + (x * maxDeg) + 'deg) rotateX(' + (-y * maxDeg) + 'deg)' +
+              ' translateZ(' + lift + 'px)';
+          });
+        });
+        el.addEventListener('pointerleave', function () {
+          cancelAnimationFrame(frame);
+          el.style.transform = '';
+        });
+      }
+
+      document.querySelectorAll('.tilt').forEach(function (el) { attachTilt(el, 9, 6); });
+      var portrait = document.getElementById('portrait');
+      if (portrait) attachTilt(portrait, 13, 10);
+    })();
+
+    /* ============================= Portrait denoising reveal =============================
+       The portrait starts as Gaussian noise (x_T) and resolves into the photo (x_0). */
+    (function () {
+      var canvas = document.getElementById('portraitNoise');
+      var image = document.getElementById('portraitImg');
+      var context = canvas.getContext('2d');
+      if (!context) { canvas.remove(); return; }
+
+      function paintGaussianNoise() {
+        var seed = 0x51a7e;
+        function random() {
+          seed = (seed * 1664525 + 1013904223) >>> 0;
+          return seed / 4294967296;
+        }
+        var frame = context.createImageData(canvas.width, canvas.height);
+        for (var i = 0; i < frame.data.length; i += 4) {
+          var u = Math.max(random(), 0.000001);
+          var v = Math.max(random(), 0.000001);
+          var g = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+          var value = Math.max(0, Math.min(255, 128 + g * 54));
+          var tint = (random() - 0.5) * 30;
+          frame.data[i] = value + tint;
+          frame.data[i + 1] = value - tint * 0.4;
+          frame.data[i + 2] = value + tint * 0.6;
+          frame.data[i + 3] = 255;
+        }
+        context.putImageData(frame, 0, 0);
+      }
+
+      var animationFrame = 0;
+
+      function play() {
+        cancelAnimationFrame(animationFrame);
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+            (navigator.connection && navigator.connection.saveData)) {
+          canvas.style.opacity = '0';
+          return;
+        }
+        paintGaussianNoise();
+        canvas.style.opacity = '1';
+        image.style.filter = 'blur(14px) saturate(.45)';
+        image.style.transform = 'scale(1.035)';
+        var startedAt = performance.now();
+
+        function animate(now) {
+          var p = Math.min(1, Math.max(0, (now - startedAt - 180) / 1650));
+          var reveal = p * p * (3 - 2 * p);
+          canvas.style.opacity = String(1 - reveal);
+          image.style.filter = 'blur(' + 14 * (1 - reveal) + 'px) saturate(' + (0.45 + reveal * 0.55) + ')';
+          image.style.transform = 'scale(' + (1 + 0.035 * (1 - reveal)) + ')';
+          if (p < 1) {
+            animationFrame = requestAnimationFrame(animate);
+          } else {
+            canvas.style.opacity = '0';
+            image.style.filter = '';
+            image.style.transform = '';
+          }
+        }
+        animationFrame = requestAnimationFrame(animate);
+      }
+
+      document.getElementById('replayDenoise').addEventListener('click', play);
+      if (image.complete) play();
+      else image.addEventListener('load', play, { once: true });
+    })();
+  </script>
+
+  <!-- Three.js for the 3D background -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"
+          integrity="sha384-aUS0jUAjhhBFNPifgxTHTNcsZDqkbegLd/JKEhJzK3Lyg9nFF1PZ2J++mzKwd8Kz"
+          crossorigin="anonymous"></script>
+
+  <script>
+    /* ============================= Three.js background =============================
+       A spiking autoencoder you scroll through. The camera descends from the input
+       layer, through the bottleneck, to the output layer. Scrolling fires the layer
+       in view and spikes propagate along the synapses (forward when scrolling down,
+       backward "gradients" when scrolling up). Between the encoder and decoder, an
+       embedding cloud compresses from an unstructured scatter into class clusters. */
+    (function () {
+      var canvas = document.getElementById('bg3d');
+      if (typeof THREE === 'undefined') { canvas.style.display = 'none'; return; }
+      var renderer;
+      try {
+        renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+      } catch (e) { canvas.style.display = 'none'; return; }
+
+      var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var small = window.innerWidth < 700;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, small ? 1.5 : 2));
+      renderer.outputColorSpace = THREE.LinearSRGBColorSpace;   // colors below are already sRGB
+
+      var scene = new THREE.Scene();
+      var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
+      camera.position.set(0, 6, 18);
+      var net = new THREE.Group();   // squeezed horizontally on narrow screens
+      scene.add(net);
+
+      /* --- helpers --- */
+      function rgb(hex) {
+        var n = parseInt(hex.slice(1), 16);
+        return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255];
+      }
+      function mix(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
+      function rampAt(stops, t) {
+        var x = Math.min(0.9999, Math.max(0, t)) * (stops.length - 1), i = Math.floor(x);
+        return mix(stops[i], stops[i + 1], x - i);
+      }
+      function clamp01(x) { return Math.min(1, Math.max(0, x)); }
+      function smoothstep(x) { x = clamp01(x); return x * x * (3 - 2 * x); }
+      function gauss() {
+        var u = 0, v = 0;
+        while (!u) u = Math.random();
+        while (!v) v = Math.random();
+        return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+      }
+
+      /* --- palettes (magma-like, matching the page) --- */
+      var PALETTES = {
+        dark: {
+          layers: ['#ffc861', '#ff8a5c', '#e8559a', '#9d6bff'],
+          hot: '#fff1d6', forward: '#ffd98a', backward: '#b98cff',
+          classes: ['#ffc861', '#ff8a5c', '#e8559a', '#9d6bff', '#ff6f7d'],
+          neutral: '#a8959f', dust: '#8a7684',
+          neuronAlpha: 0.7, edgeAlpha: 0.08, edgeGlow: 0.6, cloudAlpha: 0.9, dustAlpha: 0.35,
+          blending: THREE.AdditiveBlending
+        },
+        light: {
+          layers: ['#d98a0b', '#c8481a', '#b0306c', '#6a3fd0'],
+          hot: '#c8481a', forward: '#d2400f', backward: '#6a3fd0',
+          classes: ['#d98a0b', '#c8481a', '#b0306c', '#6a3fd0', '#d23a4f'],
+          neutral: '#9c8590', dust: '#b5a3ad',
+          neuronAlpha: 0.7, edgeAlpha: 0.1, edgeGlow: 0.55, cloudAlpha: 0.85, dustAlpha: 0.5,
+          blending: THREE.NormalBlending
+        }
+      };
+      var pal, C = {};   // C holds the parsed colors of the active palette
+
+      /* --- shaders: soft glowing points with per-point size and RGBA; plain RGBA lines --- */
+      var pointUniforms = { uScale: { value: 1 } };
+      var POINT_VS = [
+        'attribute float size;',
+        'attribute vec4 rgba;',
+        'uniform float uScale;',
+        'varying vec4 vColor;',
+        'void main() {',
+        '  vColor = rgba;',
+        '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
+        '  gl_PointSize = size * uScale / -mv.z;',
+        '  gl_Position = projectionMatrix * mv;',
+        '}'
+      ].join('\n');
+      var POINT_FS = [
+        'varying vec4 vColor;',
+        'void main() {',
+        '  float r = length(gl_PointCoord - 0.5) * 2.0;',
+        '  if (r > 1.0) discard;',
+        '  float halo = pow(1.0 - r, 2.0);',
+        '  float core = smoothstep(0.45, 0.0, r);',
+        '  gl_FragColor = vec4(vColor.rgb, min(1.0, vColor.a * (0.5 * halo + 0.8 * core)));',
+        '}'
+      ].join('\n');
+      var LINE_VS = [
+        'attribute vec4 rgba;',
+        'varying vec4 vColor;',
+        'void main() {',
+        '  vColor = rgba;',
+        '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+        '}'
+      ].join('\n');
+      var LINE_FS = 'varying vec4 vColor;\nvoid main() { gl_FragColor = vColor; }';
+
+      var materials = [];
+      function material(vs, fs, uniforms) {
+        var m = new THREE.ShaderMaterial({
+          uniforms: uniforms || {}, vertexShader: vs, fragmentShader: fs,
+          transparent: true, depthWrite: false
+        });
+        materials.push(m);
+        return m;
+      }
+      function glowPoints(count, parent) {
+        var g = new THREE.BufferGeometry();
+        var set = {
+          pos: new Float32Array(count * 3),
+          rgba: new Float32Array(count * 4),
+          size: new Float32Array(count),
+          geo: g
+        };
+        g.setAttribute('position', new THREE.BufferAttribute(set.pos, 3));
+        g.setAttribute('rgba', new THREE.BufferAttribute(set.rgba, 4));
+        g.setAttribute('size', new THREE.BufferAttribute(set.size, 1));
+        var obj = new THREE.Points(g, material(POINT_VS, POINT_FS, pointUniforms));
+        obj.frustumCulled = false;
+        (parent || net).add(obj);
+        return set;
+      }
+      function touch(set) {
+        set.geo.attributes.position.needsUpdate = true;
+        set.geo.attributes.rgba.needsUpdate = true;
+        set.geo.attributes.size.needsUpdate = true;
+      }
+
+      /* =========== Network layout: wide input -> bottleneck -> wide output =========== */
+      var LAYERS = [   // [columns, rows, width, depth]
+        [16, 5, 46, 12], [12, 4, 34, 10], [8, 3, 24, 8], [5, 2, 14, 5],
+        [5, 2, 14, 5], [8, 3, 24, 8], [12, 4, 34, 10], [16, 5, 46, 12]
+      ];
+      var GAP = 8, LATENT_GAP = 18, NET_Z = -6, LAST = LAYERS.length - 1;
+      var layerY = LAYERS.map(function (_, i) { return -i * GAP - (i > 3 ? LATENT_GAP - GAP : 0); });
+      var CLOUD_Y = (layerY[3] + layerY[4]) / 2;
+      var DEPTH = -layerY[LAST];
+
+      var nX = [], nY = [], nZ = [], nL = [], nU = [], nV = [], layerStart = [], layerCount = [];
+      LAYERS.forEach(function (spec, li) {
+        layerStart.push(nX.length);
+        layerCount.push(spec[0] * spec[1]);
+        for (var r = 0; r < spec[1]; r++) {
+          for (var c = 0; c < spec[0]; c++) {
+            var u = c / (spec[0] - 1), v = r / (spec[1] - 1);
+            nU.push(u); nV.push(v); nL.push(li);
+            nX.push((u - 0.5) * spec[2] + (Math.random() - 0.5) * 1.2);
+            nY.push(layerY[li] + (Math.random() - 0.5) * 0.8);
+            nZ.push(NET_Z + (v - 0.5) * spec[3] + (Math.random() - 0.5) * 1.2);
+          }
+        }
+      });
+      var N = nX.length;
+
+      /* synapses: each neuron feeds a local "receptive field" in the next layer */
+      var eA = [], eB = [], outE = [], inE = [];
+      for (var j = 0; j < N; j++) { outE.push([]); inE.push([]); }
+      function link(a, b) { var e = eA.length; eA.push(a); eB.push(b); outE[a].push(e); inE[b].push(e); }
+      function fieldDist(a, b) {
+        var du = nU[a] - nU[b], dv = nV[a] - nV[b];
+        return du * du + dv * dv * 0.5;
+      }
+      for (var li = 0; li < LAST; li++) {
+        var s0 = layerStart[li], c0 = layerCount[li], s1 = layerStart[li + 1], c1 = layerCount[li + 1];
+        var fan = Math.min(7, Math.round(3 * Math.max(1, c1 / c0)));
+        for (var a = s0; a < s0 + c0; a++) {
+          var cand = [];
+          for (var b = s1; b < s1 + c1; b++) cand.push([fieldDist(a, b) + Math.random() * 0.04, b]);
+          cand.sort(function (p, q) { return p[0] - q[0]; });
+          for (var q = 0; q < fan; q++) link(a, cand[q][1]);
+        }
+        for (var b2 = s1; b2 < s1 + c1; b2++) {
+          if (inE[b2].length) continue;
+          var best = s0;
+          for (var a2 = s0; a2 < s0 + c0; a2++) if (fieldDist(a2, b2) < fieldDist(best, b2)) best = a2;
+          link(best, b2);
+        }
+      }
+      var E = eA.length;
+
+      var ePos = new Float32Array(E * 6), eCol = new Float32Array(E * 8), eBase = new Float32Array(E * 6);
+      var eGlow = new Float32Array(E);
+      for (var e = 0; e < E; e++) {
+        ePos.set([nX[eA[e]], nY[eA[e]], nZ[eA[e]], nX[eB[e]], nY[eB[e]], nZ[eB[e]]], e * 6);
+      }
+      var eGeo = new THREE.BufferGeometry();
+      eGeo.setAttribute('position', new THREE.BufferAttribute(ePos, 3));
+      eGeo.setAttribute('rgba', new THREE.BufferAttribute(eCol, 4));
+      var edges = new THREE.LineSegments(eGeo, material(LINE_VS, LINE_FS));
+      edges.frustumCulled = false;
+      net.add(edges);
+
+      var neurons = glowPoints(N);
+      for (var n = 0; n < N; n++) neurons.pos.set([nX[n], nY[n], nZ[n]], n * 3);
+      var nBase = new Float32Array(N * 3);
+      var pot = new Float32Array(N), act = new Float32Array(N), refr = new Float32Array(N);
+
+      /* =========== Spikes =========== */
+      var P = small ? 180 : 360;
+      var pulses = glowPoints(P);
+      var pE = new Int32Array(P).fill(-1), pDir = new Int8Array(P), pT = new Float32Array(P), pV = new Float32Array(P);
+      var cursor = 0;
+
+      function spawn(edge, dir) {
+        for (var tries = 0; tries < P; tries++) {
+          cursor = (cursor + 1) % P;
+          if (pE[cursor] < 0) {
+            pE[cursor] = edge; pDir[cursor] = dir; pT[cursor] = 0;
+            pV[cursor] = 1 / (0.55 + Math.random() * 0.4);
+            eGlow[edge] = 1;
+            return;
+          }
+        }
+      }
+      function fire(j, dir) {
+        if (refr[j] > 0) return;
+        act[j] = 1; pot[j] = 0; refr[j] = 0.3;
+        var list = dir > 0 ? outE[j] : inE[j];
+        for (var i = 0; i < list.length; i++) if (Math.random() < 0.8) spawn(list[i], dir);
+      }
+      function fireInLayer(li, dir) {
+        li = Math.max(0, Math.min(LAST, li));
+        fire(layerStart[li] + Math.floor(Math.random() * layerCount[li]), dir);
+      }
+      function layerNear(y) {
+        var best = 0;
+        for (var i = 1; i <= LAST; i++) if (Math.abs(layerY[i] - y) < Math.abs(layerY[best] - y)) best = i;
+        return best;
+      }
+
+      function stepPulses(dt) {
+        for (var s = 0; s < P; s++) {
+          var e = pE[s], o = s * 4;
+          if (e >= 0) {
+            pT[s] += dt * pV[s];
+            if (pT[s] >= 1) {
+              var node = pDir[s] > 0 ? eB[e] : eA[e];
+              pot[node] += 0.45 + Math.random() * 0.7;
+              act[node] = Math.max(act[node], 0.35);
+              if (pot[node] >= 1) fire(node, pDir[s]);
+              pE[s] = -1;
+            }
+          }
+          e = pE[s];
+          if (e < 0) { pulses.rgba[o + 3] = 0; pulses.size[s] = 0; continue; }
+          var f = pDir[s] > 0 ? pT[s] : 1 - pT[s], a = eA[e], b = eB[e];
+          pulses.pos[s * 3]     = nX[a] + (nX[b] - nX[a]) * f;
+          pulses.pos[s * 3 + 1] = nY[a] + (nY[b] - nY[a]) * f;
+          pulses.pos[s * 3 + 2] = nZ[a] + (nZ[b] - nZ[a]) * f;
+          var c = pDir[s] > 0 ? C.forward : C.backward;
+          pulses.rgba[o] = c[0]; pulses.rgba[o + 1] = c[1]; pulses.rgba[o + 2] = c[2];
+          pulses.rgba[o + 3] = 1;
+          pulses.size[s] = 0.7;
+          eGlow[e] = Math.max(eGlow[e], 0.85);
+        }
+        touch(pulses);
+      }
+
+      function stepNeurons(dt) {
+        var da = Math.exp(-dt / 0.55), dp = Math.exp(-dt / 0.9);
+        for (var j = 0; j < N; j++) {
+          act[j] *= da; pot[j] *= dp; refr[j] -= dt;
+          var x = act[j], o = j * 4, k = j * 3;
+          neurons.rgba[o]     = nBase[k]     + (C.hot[0] - nBase[k]) * x * 0.85;
+          neurons.rgba[o + 1] = nBase[k + 1] + (C.hot[1] - nBase[k + 1]) * x * 0.85;
+          neurons.rgba[o + 2] = nBase[k + 2] + (C.hot[2] - nBase[k + 2]) * x * 0.85;
+          neurons.rgba[o + 3] = pal.neuronAlpha + (1 - pal.neuronAlpha) * x;
+          neurons.size[j] = (nL[j] === 3 || nL[j] === 4 ? 0.8 : 0.55) + 1.2 * x;
+        }
+        touch(neurons);
+      }
+
+      function stepEdges(dt) {
+        var dg = Math.exp(-dt / 0.5);
+        for (var e = 0; e < E; e++) {
+          eGlow[e] *= dg;
+          var g = eGlow[e], alpha = pal.edgeAlpha + pal.edgeGlow * g;
+          for (var v = 0; v < 2; v++) {
+            var o = e * 8 + v * 4, k = e * 6 + v * 3;
+            eCol[o]     = eBase[k]     + (C.hot[0] - eBase[k]) * g * 0.6;
+            eCol[o + 1] = eBase[k + 1] + (C.hot[1] - eBase[k + 1]) * g * 0.6;
+            eCol[o + 2] = eBase[k + 2] + (C.hot[2] - eBase[k + 2]) * g * 0.6;
+            eCol[o + 3] = alpha;
+          }
+        }
+        eGeo.attributes.rgba.needsUpdate = true;
+      }
+
+      /* =========== Embedding space compression (between encoder and decoder) =========== */
+      var cloudGroup = new THREE.Group();
+      cloudGroup.position.set(0, CLOUD_Y, NET_Z);
+      net.add(cloudGroup);
+      var M = small ? 320 : 640, K = 5;
+      var cloud = glowPoints(M, cloudGroup);
+      var protos = glowPoints(K, cloudGroup);
+      var CLASS_AT = [[-17, -2], [-11, 3], [11, -3], [17, 2], [0, -6]];   // cluster centres (x, z), mostly at the sides
+      var hi = new Float32Array(M * 3), lo = new Float32Array(M * 3);
+      var cCls = new Uint8Array(M), cDelay = new Float32Array(M), cPhase = new Float32Array(M);
+      for (var i = 0; i < M; i++) {
+        var cl = i % K;
+        cCls[i] = cl;
+        cDelay[i] = Math.random();
+        cPhase[i] = Math.random() * Math.PI * 2;
+        hi.set([gauss() * 14, gauss() * 4.5, gauss() * 5], i * 3);   // unstructured, "high-dimensional"
+        lo.set([CLASS_AT[cl][0] + gauss() * 0.8, gauss() * 0.15, CLASS_AT[cl][1] + gauss() * 0.7], i * 3);
+      }
+      for (var p = 0; p < K; p++) {
+        protos.pos.set([CLASS_AT[p][0], 0, CLASS_AT[p][1]], p * 3);
+      }
+
+      function compression(focusY) {
+        var depth = -focusY;
+        return smoothstep((depth - 12) / 18) * (1 - 0.65 * smoothstep((depth - 40) / 18));
+      }
+      function updateCloud(t, m) {
+        for (var i = 0; i < M; i++) {
+          var e = smoothstep(m * 1.4 - cDelay[i] * 0.4), k = i * 3, o = i * 4;
+          var wob = 0.15 * Math.sin(t * 0.9 + cPhase[i]);
+          cloud.pos[k]     = hi[k]     + (lo[k]     - hi[k])     * e + wob;
+          cloud.pos[k + 1] = hi[k + 1] + (lo[k + 1] - hi[k + 1]) * e + wob * 0.5;
+          cloud.pos[k + 2] = hi[k + 2] + (lo[k + 2] - hi[k + 2]) * e;
+          var c = mix(C.neutral, C.classes[cCls[i]], e);
+          cloud.rgba[o] = c[0]; cloud.rgba[o + 1] = c[1]; cloud.rgba[o + 2] = c[2];
+          cloud.rgba[o + 3] = pal.cloudAlpha * (0.4 + 0.6 * e);
+          cloud.size[i] = 0.3 + 0.1 * e;
+        }
+        touch(cloud);
+        var shown = m * m;
+        for (var p = 0; p < K; p++) {
+          var c2 = C.classes[p], o2 = p * 4;
+          protos.rgba[o2] = c2[0]; protos.rgba[o2 + 1] = c2[1]; protos.rgba[o2 + 2] = c2[2];
+          protos.rgba[o2 + 3] = 0.95 * shown;
+          protos.size[p] = shown * (1.6 + 0.35 * Math.sin(t * 2 + p));
+        }
+        touch(protos);
+        cloudGroup.rotation.y = Math.sin(t * 0.15) * 0.12;
+      }
+
+      /* =========== Ambient dust for depth =========== */
+      var D = small ? 140 : 280;
+      var dust = glowPoints(D);
+      var dustAlpha = new Float32Array(D);
+      for (var d = 0; d < D; d++) {
+        dust.pos.set([(Math.random() - 0.5) * 64, 12 - Math.random() * (DEPTH + 26), NET_Z + (Math.random() - 0.5) * 34], d * 3);
+        dust.size[d] = 0.09 + Math.random() * 0.12;
+        dustAlpha[d] = 0.3 + Math.random() * 0.7;
+      }
+
+      /* --- theme --- */
+      function applyThemeColors() {
+        pal = document.documentElement.getAttribute('data-theme') === 'dark' ? PALETTES.dark : PALETTES.light;
+        var layerStops = pal.layers.map(rgb);
+        C = {
+          hot: rgb(pal.hot), forward: rgb(pal.forward), backward: rgb(pal.backward),
+          neutral: rgb(pal.neutral), classes: pal.classes.map(rgb)
+        };
+        for (var j = 0; j < N; j++) {
+          var li = nL[j], depth = li <= 3 ? li / 3 : (LAST - li) / 3;   // warm at the ends, cool at the bottleneck
+          nBase.set(rampAt(layerStops, depth), j * 3);
+        }
+        for (var e = 0; e < E; e++) {
+          eBase.set(nBase.subarray(eA[e] * 3, eA[e] * 3 + 3), e * 6);
+          eBase.set(nBase.subarray(eB[e] * 3, eB[e] * 3 + 3), e * 6 + 3);
+        }
+        var dc = rgb(pal.dust);
+        for (var d = 0; d < D; d++) dust.rgba.set([dc[0], dc[1], dc[2], pal.dustAlpha * dustAlpha[d]], d * 4);
+        touch(dust);
+        materials.forEach(function (m) { m.blending = pal.blending; m.needsUpdate = true; });
+        if (reduced) frame();
+      }
+
+      /* --- sizing --- */
+      function fit() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        pointUniforms.uScale.value = window.innerHeight * renderer.getPixelRatio() /
+          (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+        net.scale.x = Math.min(1, Math.max(0.42, camera.aspect / 1.6));
+      }
+      fit();
+
+      /* --- interaction --- */
+      var mouseX = 0, mouseY = 0;
+      document.addEventListener('mousemove', function (e) {
+        mouseX = (e.clientX / window.innerWidth - 0.5);
+        mouseY = (e.clientY / window.innerHeight - 0.5);
+      }, { passive: true });
+      window.addEventListener('resize', function () { fit(); if (reduced) frame(); });
+
+      function scrollProgress() {
+        var max = document.documentElement.scrollHeight - window.innerHeight;
+        return max > 0 ? clamp01((window.scrollY || 0) / max) : 0;
+      }
+
+      var clock = new THREE.Clock(), t = 0;
+      var focusY = reduced ? 0 : -scrollProgress() * DEPTH;
+      var lastScroll = window.scrollY || 0, drive = 0, driveDir = 1, ambient = 0, introFired = false;
+
+      function frame() {
+        var dt = Math.min(clock.getDelta(), 0.05);
+        t += dt;
+        if (!reduced) {
+          focusY += (-scrollProgress() * DEPTH - focusY) * 0.07;
+
+          /* scrolling fires the layer in view; faster scrolling, more spikes */
+          var y = window.scrollY || 0, dy = y - lastScroll;
+          lastScroll = y;
+          if (dy) {
+            drive = Math.min(drive + Math.min(Math.abs(dy), 300) * 0.03, 24);
+            driveDir = dy > 0 ? 1 : -1;
+          }
+          var spikes = Math.min(10, Math.floor(drive));
+          drive -= spikes;
+          for (var s = 0; s < spikes; s++) fireInLayer(layerNear(focusY + driveDir * 3), driveDir);
+
+          /* a little spontaneous activity so it never looks dead */
+          ambient += dt * 1.8;
+          while (ambient >= 1) {
+            ambient -= 1;
+            fireInLayer(layerNear(focusY) - (Math.random() < 0.5 ? 1 : 0), Math.random() < 0.85 ? 1 : -1);
+          }
+          if (!introFired && t > 0.4) {
+            introFired = true;
+            for (var v = 0; v < 18; v++) fireInLayer(0, 1);
+          }
+        }
+
+        stepPulses(dt);
+        stepNeurons(dt);
+        stepEdges(dt);
+        updateCloud(t, compression(focusY));
+
+        net.rotation.y = Math.sin(t * 0.12) * 0.1;
+        camera.position.x += (mouseX * 2.4 - camera.position.x) * 0.04;
+        camera.position.y += (focusY + 6 - mouseY * 1.4 - camera.position.y) * 0.08;
+        camera.lookAt(0, focusY - 3, NET_Z);
+        renderer.render(scene, camera);
+      }
+
+      applyThemeColors();
+      window.__updateSceneTheme = applyThemeColors;
+      window.__pauseScene = function (paused) {   // used while the Camtek dialog covers the page
+        if (reduced) return;
+        renderer.setAnimationLoop(paused ? null : frame);
+        if (!paused) clock.getDelta();   // skip the paused time
+      };
+      if (reduced) {
+        camera.position.y = 6;
+        frame();   /* single static frame */
+      } else {
+        renderer.setAnimationLoop(frame);
+      }
+    })();
+  </script>
+</body>
+</html>

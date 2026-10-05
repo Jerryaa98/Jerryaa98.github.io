@@ -1,0 +1,1005 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Wafer Inspection Demo</title>
+<meta name="description" content="A synthetic, fully procedural animation of an automated optical wafer inspection: scan, flag a die, zoom in, and box the defects.">
+<script>
+// ?embed=1&theme=dark|light: the homepage shows this page inside its Camtek dialog, in the homepage's palette and fonts
+(function () {
+  var q = new URLSearchParams(location.search), root = document.documentElement, t = q.get('theme');
+  if (q.has('embed')) root.classList.add('embed');
+  if (t === 'dark' || t === 'light') {
+    root.setAttribute('data-theme', t);
+    var l = document.createElement('link'); l.rel = 'stylesheet'; // same URL as the homepage, so it comes from the cache
+    l.href = 'https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500&display=swap';
+    document.head.appendChild(l);
+  }
+})();
+</script>
+<style>
+:root{
+  --bg:#080d14; --panel:#0f1823; --panel-2:#0b121b; --line:#1c2a3a; --line-2:#2a3c52;
+  --text:#e8eef6; --muted:#93a6bb; --dim:#7489a1;
+  /* state colors as r,g,b so they work at any alpha; the canvases read them too */
+  --scan-rgb:76,215,240; --ok-rgb:61,220,151; --bad-rgb:255,77,94; --warn-rgb:255,204,51; --warn-ink-rgb:var(--warn-rgb);
+  --idle-rgb:140,170,210; --idle-line-rgb:150,180,220; --head:#c9f5fc; --head-line:#bff3fb;
+  --scan:rgb(var(--scan-rgb)); --ok:rgb(var(--ok-rgb)); --bad:rgb(var(--bad-rgb)); --warn-ink:rgb(var(--warn-ink-rgb));
+  --on-scan:#04222a; --btn-hover:#122131; --overlay:rgba(8,13,20,.9); --viewer-bg:#070b11; --stripe:rgba(255,255,255,.025);
+  --glow-a:rgba(76,215,240,.10); --glow-b:rgba(167,139,250,.08);
+  --mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --title-font: var(--sans);
+}
+/* the homepage's magma palette (amber, coral, magenta, violet) in its dark and light themes */
+html[data-theme]{
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+  --sans: "Inter", "Segoe UI", Helvetica, Arial, sans-serif;
+  --title-font: "Sora", "Inter", sans-serif;
+  --glow-a:transparent; --glow-b:transparent;
+}
+html[data-theme="dark"]{
+  --bg:#0c0910; --panel:#18111c; --panel-2:#120d16; --line:rgba(255,184,150,.13); --line-2:rgba(255,184,150,.22);
+  --text:#e5d9dc; --muted:#a8959f; --dim:#93808c;
+  --scan-rgb:255,138,92; --ok-rgb:157,107,255; --bad-rgb:232,85,154; --warn-rgb:255,200,97;
+  --idle-rgb:200,170,190; --idle-line-rgb:210,180,200; --head:#ffd9c7; --head-line:var(--head);
+  --on-scan:#2a0f05; --btn-hover:#231828; --overlay:rgba(12,9,16,.92); --viewer-bg:#08060a;
+}
+html[data-theme="light"]{
+  color-scheme:light;
+  --bg:#faf6f1; --panel:#fffbf7; --panel-2:#f6efe8; --line:rgba(58,28,44,.12); --line-2:rgba(58,28,44,.22);
+  --text:#2e2329; --muted:#6f5d67; --dim:#7d6a75;
+  --scan-rgb:200,72,26; --ok-rgb:106,63,208; --bad-rgb:176,48,108; --warn-rgb:217,138,11; --warn-ink-rgb:154,90,8;
+  --idle-rgb:58,28,44; --idle-line-rgb:58,28,44; --head:#7a2a0c; --head-line:var(--head);
+  --on-scan:#fff; --btn-hover:#f4ebe4; --overlay:rgba(255,251,247,.95); --viewer-bg:#f1e9e1; --stripe:rgba(58,28,44,.03);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); line-height:1.5;
+  background-image:
+    radial-gradient(900px 480px at 12% -8%, var(--glow-a), transparent 60%),
+    radial-gradient(800px 460px at 100% 4%, var(--glow-b), transparent 60%);
+  background-repeat:no-repeat;
+  min-height:100vh;
+}
+/* embedded: only the stage, sized to its content by the parent page */
+.embed{overflow:hidden}
+.embed body{min-height:0}
+.embed .site-header, .embed .hero, .embed .foot{display:none}
+.embed main{padding:4px 4px 6px} /* the dialog supplies the side margins; 4px keeps focus rings visible */
+.embed .stage{margin:0}
+.wrap{max-width:1180px; margin:0 auto; padding:0 20px}
+
+/* ---------- site chrome ---------- */
+.site-header{border-bottom:1px solid var(--line); background:rgba(8,13,20,.7); backdrop-filter:blur(8px)}
+.site-header .wrap{display:flex; align-items:center; justify-content:space-between; gap:16px; height:60px}
+.brand{display:flex; align-items:center; gap:10px; font-weight:650; letter-spacing:.01em}
+.brand svg{width:26px; height:26px; flex:none}
+.tag{font:500 12px/1 var(--mono); color:var(--muted); border:1px solid var(--line-2); border-radius:999px; padding:7px 11px; white-space:nowrap}
+
+.hero{padding:44px 0 22px; max-width:760px}
+.eyebrow{margin:0 0 10px; font:600 12px/1 var(--mono); letter-spacing:.14em; text-transform:uppercase; color:var(--scan)}
+h1{margin:0 0 14px; font-size:clamp(28px,4.6vw,46px); line-height:1.08; letter-spacing:-.02em; font-weight:700}
+.lede{margin:0; color:var(--muted); font-size:clamp(15px,1.7vw,17.5px); max-width:62ch}
+
+/* ---------- stage ---------- */
+.stage{position:relative; margin:22px 0 28px}
+.toolbar{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:14px 20px; margin-bottom:16px}
+.steps{display:flex; flex-wrap:wrap; gap:8px; list-style:none; margin:0; padding:0}
+.steps li{
+  display:flex; align-items:center; gap:8px; padding:7px 12px 7px 8px; border-radius:999px;
+  border:1px solid var(--line); color:var(--dim); font-size:13px; font-weight:550;
+  transition:color .25s, border-color .25s, background .25s;
+}
+.steps li b{
+  display:grid; place-items:center; width:20px; height:20px; border-radius:50%;
+  font:700 11px/1 var(--mono); background:var(--line); color:var(--muted); transition:background .25s,color .25s;
+}
+.steps li.done{color:var(--muted)}
+.steps li.done b{background:rgba(var(--ok-rgb),.2); color:var(--ok)}
+.steps li.active{color:var(--text); border-color:rgba(var(--scan-rgb),.55); background:rgba(var(--scan-rgb),.08)}
+.steps li.active b{background:var(--scan); color:var(--on-scan)}
+
+.controls{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.btn{
+  display:inline-flex; align-items:center; gap:8px; height:36px; padding:0 14px; cursor:pointer;
+  background:var(--panel); color:var(--text); border:1px solid var(--line-2); border-radius:9px;
+  font:600 13px/1 var(--sans); transition:border-color .15s, background .15s;
+}
+.btn:hover{border-color:var(--scan); background:var(--btn-hover)}
+.btn:focus-visible,.seg button:focus-visible{outline:2px solid var(--scan); outline-offset:2px}
+.seg button:focus-visible{outline-offset:-2px} /* .seg clips overflow, so draw the ring inside */
+.btn svg{width:14px; height:14px; fill:currentColor}
+.seg{display:inline-flex; border:1px solid var(--line-2); border-radius:9px; overflow:hidden; background:var(--panel)}
+.seg button{
+  height:34px; min-width:44px; padding:0 11px; border:0; border-right:1px solid var(--line-2); cursor:pointer;
+  background:transparent; color:var(--muted); font:600 12.5px/1 var(--mono);
+}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:rgba(var(--scan-rgb),.16); color:var(--scan)}
+
+.grid{display:grid; grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr); gap:18px; align-items:start}
+.right-col{display:grid; gap:18px; min-width:0}
+.card{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px; min-width:0}
+.card-h{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; min-height:28px}
+.card-h h2{margin:0; font-family:var(--title-font); font-size:15px; font-weight:650; letter-spacing:.01em}
+.site-tag{font:500 12px/1 var(--mono); color:var(--muted); text-align:right}
+
+.chip{
+  display:inline-flex; align-items:center; gap:8px; padding:6px 11px; border-radius:999px;
+  font:600 12px/1 var(--mono); letter-spacing:.04em; text-transform:uppercase;
+  background:rgba(var(--scan-rgb),.10); color:var(--scan); border:1px solid rgba(var(--scan-rgb),.35); white-space:nowrap;
+}
+.chip i{width:7px; height:7px; border-radius:50%; background:currentColor; box-shadow:0 0 8px currentColor; animation:blink 1.2s ease-in-out infinite}
+.chip[data-state="flag"]{background:rgba(var(--warn-rgb),.1); color:var(--warn-ink); border-color:rgba(var(--warn-rgb),.4)}
+.chip[data-state="found"]{background:rgba(var(--bad-rgb),.1); color:var(--bad); border-color:rgba(var(--bad-rgb),.4)}
+.chip[data-state="done"]{background:rgba(var(--ok-rgb),.1); color:var(--ok); border-color:rgba(var(--ok-rgb),.4)}
+.chip[data-state="done"] i{animation:none}
+@keyframes blink{50%{opacity:.35}}
+
+/* wafer */
+.wafer-wrap{position:relative; width:100%; aspect-ratio:1/1}
+.wafer-wrap canvas{position:absolute; inset:0; width:100%; height:100%; display:block}
+.summary{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-46%); width:min(78%,300px);
+  background:var(--overlay); border:1px solid rgba(var(--ok-rgb),.45); border-radius:14px; padding:16px 18px;
+  text-align:center; opacity:0; pointer-events:none; transition:opacity .35s, transform .35s;
+  box-shadow:0 12px 40px rgba(0,0,0,.5);
+}
+.summary.show{opacity:1; transform:translate(-50%,-50%)}
+.summary h3{margin:0 0 6px; font-family:var(--title-font); font-size:16px; color:var(--ok)}
+.summary p{margin:0; font-size:13px; color:var(--muted)}
+.summary strong{color:var(--text); font-weight:650}
+.summary .note{margin-top:10px; font:500 11.5px/1.3 var(--mono); color:var(--dim)}
+
+.legend{display:flex; flex-wrap:wrap; gap:6px 16px; margin:10px 0 0; padding:0; list-style:none; font-size:12px; color:var(--muted)}
+.legend li{display:flex; align-items:center; gap:7px}
+.legend i{width:11px; height:9px; border-radius:2px; border:1px solid}
+.legend .p i{background:rgba(var(--idle-rgb),.12); border-color:rgba(var(--idle-line-rgb),.4)}
+.legend .g i{background:rgba(var(--ok-rgb),.28); border-color:rgba(var(--ok-rgb),.7)}
+.legend .r i{background:rgba(var(--bad-rgb),.7); border-color:var(--bad)}
+.legend .c i{background:rgba(var(--scan-rgb),.55); border-color:var(--head-line)}
+
+.stats{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:14px}
+.stat{background:var(--panel-2); border:1px solid var(--line); border-radius:11px; padding:10px 12px; min-width:0}
+.stat small{display:block; font:500 11px/1.2 var(--mono); color:var(--dim); text-transform:uppercase; letter-spacing:.06em}
+.stat b{display:block; margin-top:5px; font:650 20px/1.1 var(--mono); font-variant-numeric:tabular-nums}
+.stat b #stTotal{font-size:12px; color:var(--dim); font-weight:500}
+.bar{height:4px; margin-top:12px; border-radius:99px; background:var(--line); overflow:hidden}
+.bar i{display:block; height:100%; width:0; background:linear-gradient(90deg,var(--scan),var(--ok)); border-radius:inherit}
+
+/* viewer */
+.viewer{position:relative; width:100%; aspect-ratio:640/420; background:var(--viewer-bg); border-radius:11px; overflow:hidden}
+.viewer canvas{position:absolute; inset:0; width:100%; height:100%; display:block}
+.viewer::after{content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; z-index:3;
+  box-shadow:inset 0 0 0 1px var(--line-2); transition:box-shadow .3s}
+.viewer-card.locked .viewer::after{box-shadow:inset 0 0 0 1px var(--scan), inset 0 0 28px rgba(var(--scan-rgb),.16)}
+#img{opacity:0}
+#ovl{z-index:2}
+.idle{
+  position:absolute; inset:0; z-index:1; display:grid; place-content:center; justify-items:center; gap:8px; text-align:center; padding:20px;
+  color:var(--dim); font-size:13px;
+  background:repeating-linear-gradient(0deg, var(--stripe) 0 1px, transparent 1px 4px);
+}
+.idle svg{width:34px; height:34px; stroke:var(--dim); fill:none; stroke-width:1.5}
+.idle b{color:var(--muted); font-weight:600; font-size:14px}
+.caption{margin:12px 0 0; min-height:22px; font:500 12.5px/1.45 var(--mono); color:var(--muted)}
+
+/* log */
+.log-card .card-h{margin-bottom:8px}
+#log{list-style:none; margin:0; padding:0; max-height:236px; overflow:auto; scrollbar-width:thin}
+#log li{
+  display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:12px; padding:9px 4px; border-top:1px solid var(--line);
+  animation:in .45s ease-out;
+}
+#log li:first-child{border-top:0}
+@keyframes in{from{opacity:0; transform:translateY(-8px)} to{opacity:1; transform:none}}
+.sev{font:700 10px/1 var(--mono); letter-spacing:.06em; text-transform:uppercase; padding:5px 7px; border-radius:6px; min-width:58px; text-align:center}
+.sev.crit{background:rgba(var(--bad-rgb),.15); color:var(--bad); border:1px solid rgba(var(--bad-rgb),.45)}
+.sev.minor{background:rgba(var(--warn-rgb),.12); color:var(--warn-ink); border:1px solid rgba(var(--warn-rgb),.4)}
+#log .what b{display:block; font-size:14px; font-weight:600}
+#log .what small{display:block; font:500 11.5px/1.3 var(--mono); color:var(--dim)}
+#log .conf{font:650 13px/1 var(--mono); color:var(--text)}
+.empty{margin:6px 4px 4px; font-size:13px; color:var(--dim)}
+
+.foot{padding:6px 0 48px; color:var(--dim); font-size:13px; max-width:78ch}
+.foot p{margin:0 0 6px}
+.sr-only{position:absolute; width:1px; height:1px; margin:-1px; padding:0; border:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+
+#fx{position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:5}
+
+@media (max-width:860px){
+  .grid{grid-template-columns:minmax(0,1fr)}
+  .wafer-wrap{max-width:380px; margin-inline:auto} /* keep wafer and viewer close together when stacked */
+  .site-header .tag{display:none}
+}
+@media (max-width:520px){
+  .wrap{padding:0 14px}
+  .card{padding:12px; border-radius:14px}
+  .stat b{font-size:17px}
+  .steps li{font-size:12px; padding:6px 10px 6px 7px}
+  .caption{font-size:12px}
+}
+@media (max-width:420px){ /* phones: give the status chip its own line so the title never wraps and the card height stays put */
+  .wafer-card .card-h{flex-direction:column; align-items:flex-start; gap:8px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none !important; transition:none !important}
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="14" fill="none" stroke="#4cd7f0" stroke-width="1.6"/>
+        <path d="M13 30.2a14 14 0 0 0 6 0" stroke="#080d14" stroke-width="3" fill="none"/>
+        <g stroke="#4cd7f0" stroke-width=".9" opacity=".6"><path d="M6 11h20M5 16h22M6 21h20M11 4v24M16 3v26M21 4v24"/></g>
+        <rect x="16" y="11" width="5" height="5" fill="#ff4d5e" opacity=".9"/>
+      </svg>
+      <span>Wafer Inspection</span>
+    </div>
+    <span class="tag">Interactive demo · simulated data</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <p class="eyebrow">Automated optical inspection</p>
+    <h1>Watch a wafer get inspected, die by die</h1>
+    <p class="lede">The scan head sweeps the wafer and flags a die. The review view then zooms in, compares the site against a golden reference, and boxes every defect it finds. Everything here is drawn procedurally in your browser, so there is no wafer image behind it.</p>
+  </section>
+
+  <section class="stage" id="stage" aria-label="Wafer inspection animation">
+    <div class="toolbar">
+      <ol class="steps" id="steps">
+        <li><b>1</b>Scan wafer</li>
+        <li><b>2</b>Flag die</li>
+        <li><b>3</b>Compare to reference</li>
+        <li><b>4</b>Classify &amp; log</li>
+      </ol>
+      <div class="controls">
+        <button class="btn" id="btnPlay" type="button" aria-label="Pause animation">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path id="playIcon" d="M3 2h3.5v12H3zM9.5 2H13v12H9.5z"/></svg>
+          <span id="playLabel">Pause</span>
+        </button>
+        <button class="btn" id="btnRestart" type="button">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5a5.5 5.5 0 1 0 5.2 3.7l-1.6.5A3.8 3.8 0 1 1 8 4.2v2.3l3.6-3.1L8 .3z"/></svg>
+          Restart
+        </button>
+        <div class="seg" role="group" aria-label="Playback speed" id="speed">
+          <button type="button" data-speed="0.5" aria-pressed="false">0.5×</button>
+          <button type="button" data-speed="1" aria-pressed="true">1×</button>
+          <button type="button" data-speed="2" aria-pressed="false">2×</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <article class="card wafer-card">
+        <header class="card-h">
+          <h2>Wafer map · 300 mm</h2>
+          <span class="chip" id="status" data-state="scan"><i></i><span id="statusText">Scanning wafer</span></span>
+        </header>
+        <div class="wafer-wrap" id="waferWrap">
+          <canvas id="wafer" role="img" aria-label="Wafer map. Dies turn green as the scan head passes them, and red where defects are flagged."></canvas>
+          <div class="summary" id="summary" aria-hidden="true">
+            <h3>Inspection complete</h3>
+            <p><strong id="sumDies">0</strong> dies · <strong id="sumBad">0</strong> defective<br><strong id="sumPass">0%</strong> good dies</p>
+            <p class="note" id="sumNote">Replays automatically</p>
+          </div>
+        </div>
+        <ul class="legend" aria-label="Legend">
+          <li class="p"><i></i>Waiting</li>
+          <li class="c"><i></i>Scanning</li>
+          <li class="g"><i></i>Clean</li>
+          <li class="r"><i></i>Defective</li>
+        </ul>
+        <div class="stats">
+          <div class="stat"><small>Inspected</small><b><span id="stDies">0</span> <span id="stTotal">/ 0</span></b></div>
+          <div class="stat"><small>Defective dies</small><b id="stBad">0</b></div>
+          <div class="stat"><small>Defects found</small><b id="stDef">0</b></div>
+        </div>
+        <div class="bar" aria-hidden="true"><i id="progress"></i></div>
+      </article>
+
+      <div class="right-col">
+        <article class="card viewer-card" id="viewerCard">
+          <header class="card-h">
+            <h2>Defect review</h2>
+            <span class="site-tag" id="siteTag">No active site</span>
+          </header>
+          <div class="viewer" id="viewer">
+            <div class="idle" id="idle">
+              <svg viewBox="0 0 34 34" aria-hidden="true"><rect x="4" y="4" width="26" height="26" rx="3"/><path d="M4 12V4h8M22 4h8v8M30 22v8h-8M12 30H4v-8"/><circle cx="17" cy="17" r="4"/></svg>
+              <b>Waiting for a flagged die</b>
+              <span>The zoomed view opens when the scan flags a site.</span>
+            </div>
+            <canvas id="img" role="img" aria-label="Magnified view of a flagged die showing solder bumps and the defects detected on it"></canvas>
+            <canvas id="ovl" aria-hidden="true"></canvas>
+          </div>
+          <p class="caption" id="caption">Standby.</p>
+        </article>
+
+        <article class="card log-card">
+          <header class="card-h"><h2>Defect log</h2><span class="site-tag" id="logCount">0 entries</span></header>
+          <p class="empty" id="logEmpty">Nothing yet. Detections will be listed here as they are boxed.</p>
+          <ol id="log"></ol>
+        </article>
+      </div>
+    </div>
+
+    <canvas id="fx" aria-hidden="true"></canvas>
+    <p class="sr-only" id="announce" role="status"></p>
+  </section>
+
+  <footer class="foot">
+    <p>Illustrative simulation. The wafer, bumps and defects are generated from code with a fixed random seed, so every loop looks the same. No real inspection data is shown.</p>
+  </footer>
+</main>
+
+<script>
+(() => {
+'use strict';
+
+/* ================= helpers ================= */
+const TAU = Math.PI * 2;
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+const easeInOut = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+function rng(seed) { // mulberry32
+  let a = seed | 0;
+  return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+const $ = id => document.getElementById(id);
+const pad2 = n => String(n).padStart(2, '0');
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+
+/* ================= palette =================
+   State colors come from the CSS tokens, so the page and the canvases always agree.
+   The rest only exists on the canvases. The micrograph is always a dark image, so the
+   overlay drawn on it (VIEW) keeps dark-theme colors in the light theme too. */
+const THEME = document.documentElement.getAttribute('data-theme') || 'original';
+const css = getComputedStyle(document.documentElement);
+const tok = name => css.getPropertyValue(name).trim();
+const MONO = tok('--mono') || 'ui-monospace, SFMono-Regular, Consolas, monospace';
+const SCAN = tok('--scan-rgb'), OK = tok('--ok-rgb'), BAD = tok('--bad-rgb'), WARN = tok('--warn-rgb'), WARN_INK = tok('--warn-ink-rgb');
+const IDLE = tok('--idle-rgb'), IDLE_LINE = tok('--idle-line-rgb'), HEAD = tok('--head');
+const MICRO_MAGMA = [['#17111b', '#36293d'], ['#18121a', '#3a2c36'], ['#15101c', '#2f2746']];
+const PALETTES = {
+  original: { beam: '#8fe9f9', badHi: '255,125,136', flash: '255,255,255', mark: '255,255,255', rim: '205,228,248',
+              disc: ['#34465d', '#1a2636', '#111a26'], iri: ['76,215,240,0.12', '167,139,250,0.11', '244,114,182,0.08', '251,191,36,0.08'],
+              micro: null, ink: '232,238,246', labelInk: '#0a1018', view: null },
+  dark:     { beam: '#ffb48f', badHi: '255,150,195', flash: '255,255,255', mark: '255,243,236', rim: '255,222,205',
+              disc: ['#3b2d40', '#1e1623', '#140e18'], iri: ['255,200,97,0.10', '255,138,92,0.09', '232,85,154,0.09', '157,107,255,0.11'],
+              micro: MICRO_MAGMA, ink: '255,236,226', labelInk: '#14090f', view: null },
+  light:    { beam: '#c8481a', badHi: '140,30,80', flash: '217,138,11', mark: '46,35,41', rim: '58,28,44',
+              disc: ['#ffffff', '#f1e8e1', '#e2d5cd'], iri: ['217,138,11,0.10', '200,72,26,0.07', '176,48,108,0.07', '106,63,208,0.09'],
+              micro: MICRO_MAGMA, ink: '255,236,226', labelInk: '#14090f',
+              view: { scan: '255,138,92', bad: '232,85,154', warn: '255,200,97', beam: '#ffb48f' } }
+};
+const P = PALETTES[THEME] || PALETTES.original;
+const VIEW = P.view || { scan: SCAN, bad: BAD, warn: WARN, beam: P.beam };
+
+/* ================= timing ================= */
+const T = { lock: 650, zoom: 1100, analyze: 2800, hold: 2800, retract: 650, summary: 6500 };
+const SCAN_RATE = 44; // dies per second at 1x
+
+/* ================= wafer model (wafer radius = 1) ================= */
+const DIE_W = 0.108, DIE_H = 0.086, EDGE_EX = 0.05;
+const dies = [];
+{
+  const lim = (1 - EDGE_EX) * (1 - EDGE_EX);
+  for (let j = -12; j < 12; j++) for (let i = -10; i < 10; i++) {
+    const x0 = i * DIE_W, x1 = x0 + DIE_W, y0 = j * DIE_H, y1 = y0 + DIE_H;
+    if (x0*x0 + y0*y0 > lim || x1*x1 + y0*y0 > lim || x0*x0 + y1*y1 > lim || x1*x1 + y1*y1 > lim) continue;
+    dies.push({ i, j, ux: (x0 + x1) / 2, uy: (y0 + y1) / 2, done: false, flagged: false, flash: 0 });
+  }
+}
+const order = []; // serpentine scan order
+[...new Set(dies.map(d => d.j))].sort((a, b) => a - b).forEach((j, k) => {
+  const row = dies.filter(d => d.j === j).sort((a, b) => a.i - b.i);
+  if (k % 2) row.reverse();
+  order.push(...row);
+});
+order.forEach((d, idx) => { d.idx = idx; });
+dies.splice(0, dies.length, ...order); // dies[i] === order[i]: one index space for rects, centers, scan head and markers
+const N = order.length;
+const dieName = d => `X${pad2(d.i + 11)} Y${pad2(d.j + 13)}`;
+
+const featured = [0.30, 0.58, 0.82].map((f, k) => {
+  const die = order[Math.round(f * (N - 1))]; die.featured = true; die.site = k;
+  return { idx: die.idx, die };
+});
+{ // a few extra defective dies that are not reviewed in this demo, incl. a small edge cluster
+  const mr = rng(77);
+  const pick = () => { let k; do { k = Math.floor(mr() * N); } while (order[k].featured || order[k].minor || k < 12); return k; };
+  for (let n = 0; n < 3; n++) order[pick()].minor = true;
+  const edge = order.filter(d => Math.hypot(d.ux, d.uy) > 0.8 && !d.featured && !d.minor && d.idx > 20 && d.idx < N - 2);
+  const e = edge[Math.floor(mr() * edge.length)];
+  e.minor = true; if (!order[e.idx + 1].featured) order[e.idx + 1].minor = true;
+  for (const d of dies) { const v = 0.8 + 0.4 * mr(); d.passFill = `rgba(${OK},${(0.12 + 0.10 * v).toFixed(3)})`; d.badFill = `rgba(${BAD},${(0.55 + 0.15 * v).toFixed(3)})`; }
+}
+
+/* ================= review sites (the defect data) =================
+   Every defect is described once, in image coordinates (640 x 420).
+   The same record is used to paint the defect AND to place its bounding box. */
+const IMG_W = 640, IMG_H = 420;
+const LABELS = { missing: 'Missing bump', bridge: 'Bridging', particle: 'Particle', residue: 'Residue', small: 'Undersized bump', scratch: 'Scratch' };
+const SITES = [
+  { seed: 101, umPerPx: 1.5, traces: 'rows',
+    palette: { bg0: '#121a25', bg1: '#27374c', pad: '#a8703c', trace: '#96622f' },
+    grid: { cols: 6, rows: 4, px: 92, py: 88, r: 27, stagger: false },
+    defectSpec: [
+      { type: 'missing', col: 2, row: 1, conf: 0.98 },
+      { type: 'particle', cx: 412, cy: 210, r: 11, conf: 0.93 } ] },
+  { seed: 202, umPerPx: 1.1, traces: 'zigzag',
+    palette: { bg0: '#141b24', bg1: '#2a3a3f', pad: '#b07a44', trace: '#8e5f33' },
+    grid: { cols: 7, rows: 5, px: 78, py: 66, r: 19, stagger: true },
+    defectSpec: [
+      { type: 'small', col: 1, row: 3, conf: 0.91 },
+      { type: 'bridge', col: 3, row: 2, conf: 0.96 },
+      { type: 'residue', cx: 500, cy: 112, rx: 40, ry: 22, rot: -0.3, conf: 0.88 } ] },
+  { seed: 303, umPerPx: 1.9, traces: 'cols',
+    palette: { bg0: '#151a26', bg1: '#2c3550', pad: '#a06a3a', trace: '#8f5d31' },
+    grid: { cols: 5, rows: 3, px: 110, py: 110, r: 32, stagger: false },
+    defectSpec: [
+      { type: 'scratch', x1: 52, y1: 292, x2: 238, y2: 376, bend: -22, conf: 0.94 },
+      { type: 'particle', cx: 265, cy: 155, r: 13, conf: 0.90 },
+      { type: 'missing', col: 4, row: 0, conf: 0.97 } ] }
+];
+
+function layoutSite(site, si) {
+  const g = site.grid, bumps = [];
+  const totalW = (g.cols - 1) * g.px + (g.stagger ? g.px / 2 : 0);
+  const x0 = (IMG_W - totalW) / 2, y0 = (IMG_H - (g.rows - 1) * g.py) / 2;
+  for (let row = 0; row < g.rows; row++) for (let col = 0; col < g.cols; col++)
+    bumps.push({ col, row, r: g.r, x: x0 + col * g.px + (g.stagger && row % 2 ? g.px / 2 : 0), y: y0 + row * g.py, kind: 'ok' });
+  const at = (c, r) => bumps[r * g.cols + c];
+  const r2 = rng(site.seed * 7 + 3);
+  site.bumps = bumps;
+  site.defects = site.defectSpec.map(sp => {
+    const d = Object.assign({}, sp, { label: LABELS[sp.type], killer: sp.type === 'missing' || sp.type === 'bridge', triggered: false });
+    const sq = (cx, cy, h) => ({ x: cx - h, y: cy - h, w: h * 2, h: h * 2 });
+    if (sp.type === 'missing' || sp.type === 'small') {
+      const b = at(sp.col, sp.row); b.kind = sp.type; d.box = sq(b.x, b.y, b.r * (sp.type === 'missing' ? 1.5 : 1.4));
+    } else if (sp.type === 'bridge') {
+      const a = at(sp.col, sp.row), c = at(sp.col + 1, sp.row); d.a = a; d.c = c;
+      d.box = { x: a.x + a.r * 0.2 - 5, y: a.y - a.r * 0.8 - 5, w: (c.x - a.x) - a.r * 0.4 + 10, h: a.r * 1.6 + 10 };
+    } else if (sp.type === 'particle') {
+      d.blob = Array.from({ length: 10 }, (_, k) => [k / 10 * TAU, 0.72 + r2() * 0.5]);
+      d.box = sq(sp.cx, sp.cy, sp.r * 1.75);
+    } else if (sp.type === 'residue') {
+      d.blobs = Array.from({ length: 5 }, () => [(r2() - 0.5) * sp.rx * 0.8, (r2() - 0.5) * sp.ry * 0.8, 0.45 + r2() * 0.45, 0.45 + r2() * 0.5]);
+      const c = Math.cos(sp.rot), s = Math.sin(sp.rot);
+      const hw = Math.hypot(sp.rx * c, sp.ry * s) * 1.12, hh = Math.hypot(sp.rx * s, sp.ry * c) * 1.12;
+      d.box = { x: sp.cx - hw, y: sp.cy - hh, w: hw * 2, h: hh * 2 };
+    } else if (sp.type === 'scratch') {
+      const mx = (sp.x1 + sp.x2) / 2, my = (sp.y1 + sp.y2) / 2, dx = sp.x2 - sp.x1, dy = sp.y2 - sp.y1, len = Math.hypot(dx, dy);
+      d.qx = mx + (-dy / len) * sp.bend; d.qy = my + (dx / len) * sp.bend;
+      let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
+      for (let k = 0; k <= 24; k++) { const t = k / 24, u = 1 - t;
+        const x = u*u*sp.x1 + 2*u*t*d.qx + t*t*sp.x2, y = u*u*sp.y1 + 2*u*t*d.qy + t*t*sp.y2;
+        minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y); }
+      d.box = { x: minX - 9, y: minY - 9, w: maxX - minX + 18, h: maxY - minY + 18 };
+    }
+    d.trig = (d.box.x + d.box.w / 2) / IMG_W * T.analyze; // the sweep line reaches the defect here
+    return d;
+  });
+}
+if (P.micro) SITES.forEach((s, k) => { [s.palette.bg0, s.palette.bg1] = P.micro[k]; });
+SITES.forEach(layoutSite);
+
+/* ================= sub-image painter ================= */
+function strokeTrace(ctx, pts, w, color) {
+  const path = () => { ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]); };
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  path(); ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = w + 4; ctx.stroke();
+  path(); ctx.strokeStyle = color; ctx.lineWidth = w; ctx.stroke();
+  ctx.save(); ctx.translate(0, -w * 0.22); path(); ctx.strokeStyle = 'rgba(255,215,165,0.28)'; ctx.lineWidth = w * 0.35; ctx.stroke(); ctx.restore();
+}
+function drawTraces(ctx, site) {
+  const g = site.grid, B = site.bumps, at = (c, r) => B[r * g.cols + c], w = g.r * 0.34, col = site.palette.trace;
+  if (site.traces === 'rows') {
+    for (let r = 0; r < g.rows; r++) strokeTrace(ctx, [[-10, at(0, r).y], [IMG_W + 10, at(0, r).y]], w, col);
+    for (let r = 0; r < g.rows - 1; r++) for (let c = 0; c < g.cols; c++) if ((c + r) % 2 === 0) {
+      const a = at(c, r), b = at(c, r + 1); strokeTrace(ctx, [[a.x, a.y], [b.x, b.y]], w * 0.8, col); }
+  } else if (site.traces === 'zigzag') {
+    for (let r = 0; r < g.rows - 1; r++) for (let c = 0; c < g.cols; c++) {
+      const right = (c + r) % 2 === 0; const cc = r % 2 === 0 ? (right ? c : c - 1) : (right ? c + 1 : c);
+      if (cc < 0 || cc >= g.cols) continue;
+      const a = at(c, r), b = at(cc, r + 1); strokeTrace(ctx, [[a.x, a.y], [b.x, b.y]], w * 0.85, col); }
+  } else {
+    for (let c = 0; c < g.cols; c++) strokeTrace(ctx, [[at(c, 0).x, -10], [at(c, 0).x, IMG_H + 10]], w, col);
+    for (let r = 0; r < g.rows; r++) for (let c = 0; c < g.cols - 1; c++) if ((c + r) % 2 === 0) {
+      const a = at(c, r), b = at(c + 1, r); strokeTrace(ctx, [[a.x, a.y], [b.x, b.y]], w * 0.75, col); }
+  }
+}
+function drawBump(ctx, b, pal) {
+  const { x, y, r } = b;
+  const circle = (cx, cy, rad) => { ctx.beginPath(); ctx.arc(cx, cy, rad, 0, TAU); };
+  circle(x + 2.5, y + 3.5, r * 1.34); ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fill();
+  circle(x, y, r * 1.28); ctx.fillStyle = pal.pad; ctx.fill();
+  circle(x, y, r * 1.12); ctx.fillStyle = '#0f151d'; ctx.fill();
+  if (b.kind === 'missing') { // bare pad, no pillar
+    const g = ctx.createRadialGradient(x - r * 0.25, y - r * 0.3, 1, x, y, r * 1.0);
+    g.addColorStop(0, '#8d5d33'); g.addColorStop(1, '#4a2e17');
+    circle(x, y, r * 0.98); ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,225,190,0.22)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(x, y, r * 0.62, 0.3, 1.9); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, r * 0.35, 3.4, 4.8); ctx.stroke();
+    return;
+  }
+  const rad = b.kind === 'small' ? r * 0.6 : r;
+  const g = ctx.createRadialGradient(x - rad * 0.35, y - rad * 0.4, rad * 0.08, x, y, rad * 1.05);
+  if (b.kind === 'small') { g.addColorStop(0, '#c4ccd7'); g.addColorStop(0.5, '#7b8696'); g.addColorStop(1, '#343d4a'); }
+  else { g.addColorStop(0, '#f5f8fc'); g.addColorStop(0.35, '#c8d1dd'); g.addColorStop(0.75, '#7e8a9b'); g.addColorStop(1, '#3a4452'); }
+  circle(x, y, rad); ctx.fillStyle = g; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, rad * 0.93, 3.5, 5.4); ctx.stroke();
+}
+function silverGradient(ctx, x0, y0, x1, y1) {
+  const g = ctx.createLinearGradient(x0, y0, x1, y1);
+  g.addColorStop(0, '#e8edf4'); g.addColorStop(0.5, '#aab4c2'); g.addColorStop(1, '#5a6574'); return g;
+}
+function drawDefect(ctx, d) {
+  if (d.type === 'bridge') {
+    const a = d.a, c = d.c, xa = a.x + a.r * 0.3, xb = c.x - c.r * 0.3, cy = a.y, hh = a.r * 0.42, w = xb - xa;
+    ctx.beginPath(); ctx.moveTo(xa, cy - hh * 0.9);
+    ctx.bezierCurveTo(xa + w * 0.3, cy - hh * 0.5, xa + w * 0.65, cy - hh * 0.65, xb, cy - hh * 0.85);
+    ctx.lineTo(xb, cy + hh * 0.85);
+    ctx.bezierCurveTo(xa + w * 0.65, cy + hh * 0.6, xa + w * 0.3, cy + hh * 0.75, xa, cy + hh * 0.9); ctx.closePath();
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.save(); ctx.translate(1.5, 2.5); ctx.fill(); ctx.restore();
+    ctx.fillStyle = silverGradient(ctx, 0, cy - hh, 0, cy + hh); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 0.8; ctx.stroke();
+  } else if (d.type === 'particle') {
+    ctx.beginPath();
+    d.blob.forEach(([ang, k], i) => { const x = d.cx + Math.cos(ang) * d.r * k, y = d.cy + Math.sin(ang) * d.r * k; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.save(); ctx.translate(2, 2.5); ctx.fill(); ctx.restore();
+    const g = ctx.createRadialGradient(d.cx - d.r * 0.3, d.cy - d.r * 0.3, 1, d.cx, d.cy, d.r * 1.2);
+    g.addColorStop(0, '#5f6a79'); g.addColorStop(0.5, '#2a313c'); g.addColorStop(1, '#0b0f14');
+    ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.arc(d.cx - d.r * 0.35, d.cy - d.r * 0.4, d.r * 0.16, 0, TAU); ctx.fill();
+  } else if (d.type === 'residue') {
+    ctx.save(); ctx.translate(d.cx, d.cy); ctx.rotate(d.rot);
+    ctx.fillStyle = 'rgba(218,186,98,0.13)'; ctx.beginPath(); ctx.ellipse(0, 0, d.rx, d.ry, 0, 0, TAU); ctx.fill();
+    for (const [ox, oy, kx, ky] of d.blobs) { ctx.fillStyle = 'rgba(220,190,104,0.15)'; ctx.beginPath(); ctx.ellipse(ox, oy, d.rx * kx, d.ry * ky, 0, 0, TAU); ctx.fill(); }
+    ctx.strokeStyle = 'rgba(240,215,140,0.28)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(0, 0, d.rx * 0.96, d.ry * 0.94, 0, 0, TAU); ctx.stroke();
+    ctx.restore();
+  } else if (d.type === 'scratch') {
+    const path = (dx, dy) => { ctx.beginPath(); ctx.moveTo(d.x1 + dx, d.y1 + dy); ctx.quadraticCurveTo(d.qx + dx, d.qy + dy, d.x2 + dx, d.y2 + dy); };
+    ctx.lineCap = 'round';
+    path(0, 0); ctx.strokeStyle = 'rgba(8,10,14,0.75)'; ctx.lineWidth = 3.6; ctx.stroke();
+    path(-1.8, -1.8); ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.4; ctx.stroke();
+    path(2, 2); ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1; ctx.stroke();
+    path(7, -6); ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 0.9; ctx.stroke();
+    path(-6, 7); ctx.strokeStyle = 'rgba(8,10,14,0.5)'; ctx.lineWidth = 1.2; ctx.stroke();
+  }
+}
+let imgCtx, imgC;
+function renderSiteImage(site) {
+  const ctx = imgCtx, s = view.W / IMG_W * view.dpr;
+  ctx.setTransform(s, 0, 0, s, 0, 0);
+  const rnd = rng(site.seed), pal = site.palette;
+  let g = ctx.createRadialGradient(IMG_W * 0.5, IMG_H * 0.45, 30, IMG_W * 0.5, IMG_H * 0.5, IMG_W * 0.65);
+  g.addColorStop(0, pal.bg1); g.addColorStop(1, pal.bg0);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, IMG_W, IMG_H + 8);
+  for (let i = 0; i < 26; i++) { // soft mottling of the polymer layer
+    const x = rnd() * IMG_W, y = rnd() * IMG_H, r = 30 + rnd() * 70, light = rnd() < 0.5;
+    const bg = ctx.createRadialGradient(x, y, 0, x, y, r);
+    bg.addColorStop(0, light ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.07)'); bg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = bg; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  drawTraces(ctx, site);
+  for (const b of site.bumps) drawBump(ctx, b, pal);
+  for (const d of site.defects) drawDefect(ctx, d);
+  for (let i = 0; i < 5000; i++) { ctx.fillStyle = rnd() < 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.12)'; ctx.fillRect(rnd() * IMG_W, rnd() * IMG_H, 1.3, 1.3); }
+  g = ctx.createRadialGradient(IMG_W / 2, IMG_H / 2, IMG_H * 0.35, IMG_W / 2, IMG_H / 2, IMG_W * 0.62);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.45)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, IMG_W, IMG_H + 8);
+}
+
+/* ================= state machine ================= */
+const S = { phase: 'scan', phaseT: 0, site: 0, scanPos: 0, resolved: 0, siteT: 0, clock: 0,
+            paused: false, speed: 1, defDies: 0, defects: 0, logN: 0 };
+let needImg = false;
+
+function reset() {
+  for (const d of dies) { d.done = false; d.flagged = false; d.flash = 0; }
+  for (const s of SITES) for (const d of s.defects) d.triggered = false;
+  Object.assign(S, { phase: 'scan', phaseT: 0, site: 0, scanPos: 0, resolved: 0, siteT: 0, clock: 0, defDies: 0, defects: 0, logN: 0 });
+  logEl.replaceChildren(); needImg = false;
+}
+function goPhase(p) {
+  S.phase = p; S.phaseT = 0;
+  if (p === 'lock') { featured[S.site].die.flagged = true; S.defDies++; }
+  if (p === 'zoom') needImg = true;
+  if (p === 'analyze') S.siteT = 0;
+  if (p === 'hold') announce(`Site ${S.site + 1}: ${SITES[S.site].defects.length} defects classified`);
+  if (p === 'summary') announce('Inspection complete');
+}
+function addLog(d, si) {
+  const die = featured[si].die;
+  const li = document.createElement('li');
+  const sev = document.createElement('span'); sev.className = 'sev ' + (d.killer ? 'crit' : 'minor'); sev.textContent = d.killer ? 'Critical' : 'Minor';
+  const what = document.createElement('div'); what.className = 'what';
+  const b = document.createElement('b'); b.textContent = d.label;
+  const sm = document.createElement('small'); sm.textContent = `Site ${si + 1} · Die ${dieName(die)}`;
+  what.append(b, sm);
+  const conf = document.createElement('span'); conf.className = 'conf'; conf.textContent = Math.round(d.conf * 100) + '%';
+  li.append(sev, what, conf);
+  logEl.prepend(li);
+  while (logEl.children.length > 14) logEl.lastElementChild.remove();
+  S.logN++;
+}
+function update(dt) {
+  S.phaseT += dt; S.clock += dt;
+  for (const d of dies) if (d.flash > 0) d.flash = Math.max(0, d.flash - dt / 500);
+  if (S.site < SITES.length && (S.phase === 'analyze' || S.phase === 'hold' || S.phase === 'retract')) {
+    S.siteT += dt;
+    for (const d of SITES[S.site].defects) if (!d.triggered && S.siteT >= d.trig) { d.triggered = true; S.defects++; addLog(d, S.site); }
+  }
+  switch (S.phase) {
+    case 'scan': {
+      const more = S.site < featured.length, target = more ? featured[S.site].idx : N;
+      S.scanPos = Math.min(target, S.scanPos + SCAN_RATE * dt / 1000);
+      while (S.resolved < Math.floor(S.scanPos)) {
+        const d = order[S.resolved++]; d.done = true;
+        if (d.minor) { d.flash = 1; S.defDies++; }
+      }
+      if (S.scanPos >= target) goPhase(more ? 'lock' : 'summary');
+      break; }
+    case 'lock': if (S.phaseT >= T.lock) goPhase('zoom'); break;
+    case 'zoom': if (S.phaseT >= T.zoom) goPhase('analyze'); break;
+    case 'analyze': if (S.phaseT >= T.analyze) goPhase('hold'); break;
+    case 'hold': if (S.phaseT >= T.hold) goPhase('retract'); break;
+    case 'retract': if (S.phaseT >= T.retract) { S.site++; goPhase('scan'); } break;
+    case 'summary': if (S.phaseT >= T.summary) reset(); break;
+  }
+}
+let quiet = false; // silences screen-reader announcements while seek() fast-forwards
+function seek(phase, site = 0, offsetMs = 0) { // deterministic fast-forward (also used for screenshots)
+  reset(); let guard = 0; quiet = true;
+  while (!(S.phase === phase && (phase === 'summary' || S.site === site)) && guard++ < 400000) update(16);
+  for (let rem = offsetMs; rem > 0; rem -= 16) update(Math.min(16, rem));
+  quiet = false;
+  needImg = S.phase !== 'scan' && S.phase !== 'lock' && S.phase !== 'summary';
+}
+
+/* ================= canvases / layout ================= */
+const stage = $('stage'), waferWrap = $('waferWrap'), waferC = $('wafer'), viewer = $('viewer'), ovlC = $('ovl'), fxC = $('fx');
+imgC = $('img');
+const logEl = $('log');
+const wctx = waferC.getContext('2d'), ovl = ovlC.getContext('2d'), fxx = fxC.getContext('2d');
+imgCtx = imgC.getContext('2d');
+const wafer = { W: 0, dpr: 1, rects: [], centers: [], bg: null, cx: 0, cy: 0, R: 0 };
+const view = { W: 0, H: 0, dpr: 1 };
+const fxs = { W: 0, H: 0, dpr: 1 };
+let layoutDirty = true, fxDirty = false;
+
+function waferPath(ctx, cx, cy, R) {
+  const d = 0.05; // notch at 6 o'clock
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, Math.PI / 2 + d, Math.PI / 2 - d + TAU, false);
+  ctx.quadraticCurveTo(cx, cy + R - R * 0.09, cx + Math.cos(Math.PI / 2 + d) * R, cy + Math.sin(Math.PI / 2 + d) * R);
+  ctx.closePath();
+}
+function buildWaferBg() {
+  const W = wafer.W, dpr = wafer.dpr, cx = wafer.cx, cy = wafer.cy, R = wafer.R;
+  const c = document.createElement('canvas'); c.width = c.height = Math.round(W * dpr);
+  const ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  let g = ctx.createRadialGradient(cx, cy, R * 0.92, cx, cy, R * 1.14);
+  g.addColorStop(0, `rgba(${SCAN},0.12)`); g.addColorStop(1, `rgba(${SCAN},0)`);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R * 1.14, 0, TAU); ctx.fill();
+  waferPath(ctx, cx, cy, R);
+  g = ctx.createRadialGradient(cx - R * 0.3, cy - R * 0.35, R * 0.05, cx, cy, R * 1.15);
+  g.addColorStop(0, P.disc[0]); g.addColorStop(0.6, P.disc[1]); g.addColorStop(1, P.disc[2]);
+  ctx.fillStyle = g; ctx.fill();
+  ctx.save(); waferPath(ctx, cx, cy, R); ctx.clip();
+  if (ctx.createConicGradient) {
+    const cg = ctx.createConicGradient(-0.6, cx, cy);
+    P.iri.forEach((c, k) => cg.addColorStop(k / 4, `rgba(${c})`)); cg.addColorStop(1, `rgba(${P.iri[0]})`);
+    ctx.fillStyle = cg; ctx.fillRect(0, 0, W, W);
+  }
+  ctx.restore();
+  waferPath(ctx, cx, cy, R); ctx.lineWidth = 1.5; ctx.strokeStyle = `rgba(${P.rim},0.5)`; ctx.stroke();
+  ctx.setLineDash([3, 4]); ctx.strokeStyle = `rgba(${P.rim},0.16)`; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(cx, cy, R * (1 - EDGE_EX), 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+  wafer.bg = c;
+}
+function layout() {
+  layoutDirty = false;
+  wafer.dpr = clamp(window.devicePixelRatio || 1, 1, 2.5);
+  wafer.W = Math.max(120, waferWrap.clientWidth);
+  waferC.width = waferC.height = Math.round(wafer.W * wafer.dpr);
+  wafer.cx = wafer.cy = wafer.W / 2; wafer.R = wafer.W * 0.455;
+  const dw = DIE_W * wafer.R, dh = DIE_H * wafer.R;
+  wafer.rects = dies.map(d => ({ x: wafer.cx + d.ux * wafer.R - dw / 2, y: wafer.cy + d.uy * wafer.R - dh / 2, w: dw, h: dh }));
+  wafer.centers = dies.map(d => ({ x: wafer.cx + d.ux * wafer.R, y: wafer.cy + d.uy * wafer.R }));
+  buildWaferBg();
+
+  view.dpr = wafer.dpr; view.W = Math.max(120, viewer.clientWidth); view.H = viewer.clientHeight;
+  for (const c of [imgC, ovlC]) { c.width = Math.round(view.W * view.dpr); c.height = Math.round(view.H * view.dpr); }
+  needImg = true;
+
+  sizeFx(); layoutKey = sizeKey(); lastDpr = window.devicePixelRatio || 1;
+}
+// The cone overlay is stage-sized, so it must follow height changes; everything else only cares about widths and DPR.
+function sizeFx() {
+  fxs.dpr = wafer.dpr; fxs.W = stage.clientWidth; fxs.H = stage.clientHeight;
+  fxC.width = Math.round(fxs.W * fxs.dpr); fxC.height = Math.round(fxs.H * fxs.dpr); fxDirty = false;
+}
+let layoutKey = '', lastDpr = 1;
+const sizeKey = () => [waferWrap.clientWidth, viewer.clientWidth, viewer.clientHeight, stage.clientWidth].join('|');
+const onResize = () => { if (sizeKey() !== layoutKey) layoutDirty = true; else if (stage.clientHeight !== fxs.H) sizeFx(); };
+const ro = new ResizeObserver(onResize);
+ro.observe(stage); ro.observe(waferWrap); ro.observe(viewer);
+
+/* ================= drawing ================= */
+const flaggedPhase = () => S.phase === 'lock' || S.phase === 'zoom' || S.phase === 'analyze' || S.phase === 'hold' || S.phase === 'retract';
+const reviewPhase = () => S.phase === 'zoom' || S.phase === 'analyze' || S.phase === 'hold' || S.phase === 'retract';
+
+function brackets(ctx, x, y, w, h, len) {
+  ctx.beginPath();
+  ctx.moveTo(x, y + len); ctx.lineTo(x, y); ctx.lineTo(x + len, y);
+  ctx.moveTo(x + w - len, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + len);
+  ctx.moveTo(x + w, y + h - len); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w - len, y + h);
+  ctx.moveTo(x + len, y + h); ctx.lineTo(x, y + h); ctx.lineTo(x, y + h - len);
+}
+function drawWafer() {
+  const ctx = wctx, W = wafer.W;
+  ctx.setTransform(wafer.dpr, 0, 0, wafer.dpr, 0, 0);
+  ctx.clearRect(0, 0, W, W);
+  ctx.drawImage(wafer.bg, 0, 0, W, W);
+  const scanning = S.phase === 'scan' && S.scanPos < N;
+  const cur = scanning ? Math.min(N - 1, Math.floor(S.scanPos)) : -1;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < N; i++) {
+    const d = dies[i], r = wafer.rects[i];
+    let fill, stroke;
+    if (d.done) { const bad = d.minor || d.featured; fill = bad ? d.badFill : d.passFill; stroke = bad ? `rgba(${P.badHi},0.95)` : `rgba(${OK},0.4)`; }
+    else if (d.flagged) { fill = `rgba(${BAD},0.6)`; stroke = `rgb(${BAD})`; }
+    else if (i === cur) { fill = `rgba(${SCAN},0.6)`; stroke = HEAD; }
+    else { fill = `rgba(${IDLE},0.075)`; stroke = `rgba(${IDLE_LINE},0.16)`; }
+    ctx.fillStyle = fill; ctx.fillRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+    ctx.strokeStyle = stroke; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+    if (d.flash > 0) { ctx.fillStyle = `rgba(${P.flash},${(d.flash * 0.75).toFixed(3)})`; ctx.fillRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1); }
+    if (d.done && d.featured) { ctx.strokeStyle = `rgba(${P.mark},0.9)`; ctx.strokeRect(r.x - 1.5, r.y - 1.5, r.w + 3, r.h + 3); }
+  }
+  if (scanning) { // swath band + beam following the scan head
+    const i = cur, f = S.scanPos - Math.floor(S.scanPos), a = wafer.centers[i], b = wafer.centers[Math.min(N - 1, i + 1)];
+    const hx = lerp(a.x, b.x, f), hy = lerp(a.y, b.y, f), dh = DIE_H * wafer.R;
+    ctx.save(); waferPath(ctx, wafer.cx, wafer.cy, wafer.R); ctx.clip(); // keep the swath inside the wafer outline
+    ctx.fillStyle = `rgba(${SCAN},0.07)`; ctx.fillRect(wafer.cx - wafer.R, hy - dh / 2, wafer.R * 2, dh);
+    ctx.restore();
+    ctx.save(); ctx.shadowColor = `rgba(${SCAN},0.9)`; ctx.shadowBlur = 12;
+    ctx.strokeStyle = P.beam; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(hx, hy - dh * 0.9); ctx.lineTo(hx, hy + dh * 0.9); ctx.stroke(); ctx.restore();
+  }
+  if (flaggedPhase()) { // brackets + tag on the flagged die
+    const fi = featured[S.site].idx, r = wafer.rects[fi], cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+    const k = S.phase === 'lock' ? lerp(3.4, 1.55, easeOutCubic(clamp(S.phaseT / T.lock))) : 1.55 + 0.1 * Math.sin(S.clock / 170);
+    const w = r.w * k, h = r.h * k, col = S.phase === 'lock' ? WARN_INK : BAD;
+    ctx.strokeStyle = `rgb(${col})`; ctx.lineWidth = 2;
+    brackets(ctx, cx - w / 2, cy - h / 2, w, h, 5); ctx.stroke();
+    ctx.font = `700 10px ${MONO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    const tx = clamp(cx, 22, W - 22), ty = Math.max(14, cy - h / 2 - 4);
+    ctx.fillStyle = `rgb(${col})`; ctx.fillText(`SITE ${S.site + 1}`, tx, ty);
+  }
+}
+
+function drawViewer() {
+  const active = reviewPhase();
+  const site = SITES[Math.min(S.site, SITES.length - 1)];
+  let op = 0, blur = 0;
+  if (S.phase === 'zoom') { const p = clamp(S.phaseT / T.zoom); op = easeOutCubic(clamp((p - 0.12) / 0.88)); blur = (1 - p) * 10; }
+  else if (S.phase === 'analyze' || S.phase === 'hold') op = 1;
+  else if (S.phase === 'retract') op = 1 - easeInOut(clamp(S.phaseT / T.retract));
+  if (active && needImg) { renderSiteImage(site); needImg = false; }
+  setStyle(imgC, 'opacity', op.toFixed(3));
+  setStyle(imgC, 'filter', blur > 0.05 ? `blur(${blur.toFixed(1)}px) brightness(${(1.25 - blur * 0.02).toFixed(2)})` : 'none');
+  setStyle($('idle'), 'opacity', (1 - op).toFixed(3));
+
+  ovl.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
+  ovl.clearRect(0, 0, view.W, view.H);
+  if (!active || op < 0.01) return;
+  const W = view.W, H = view.H, s = W / IMG_W;
+  ovl.globalAlpha = op;
+
+  // frame decor: corner brackets, centre cross, scale bar
+  ovl.strokeStyle = `rgba(${P.ink},0.45)`; ovl.lineWidth = 1.5;
+  brackets(ovl, 10, 10, W - 20, H - 20, 14); ovl.stroke();
+  const sbPx = 100 / site.umPerPx * s, sbx = W - 18 - sbPx, sby = H - 20;
+  ovl.strokeStyle = `rgba(${P.ink},0.85)`; ovl.beginPath();
+  ovl.moveTo(sbx, sby - 4); ovl.lineTo(sbx, sby); ovl.lineTo(sbx + sbPx, sby); ovl.lineTo(sbx + sbPx, sby - 4); ovl.stroke();
+  ovl.font = `600 10px ${MONO}`; ovl.textAlign = 'center'; ovl.textBaseline = 'bottom';
+  ovl.fillStyle = `rgba(${P.ink},0.85)`; ovl.fillText('100 µm', sbx + sbPx / 2, sby - 5);
+  if (S.phase === 'zoom') {
+    const p = clamp(S.phaseT / T.zoom); ovl.strokeStyle = `rgba(${VIEW.scan},${(0.7 * (1 - p)).toFixed(3)})`; ovl.lineWidth = 1;
+    ovl.beginPath(); ovl.moveTo(W / 2, 0); ovl.lineTo(W / 2, H); ovl.moveTo(0, H / 2); ovl.lineTo(W, H / 2); ovl.stroke();
+    ovl.globalAlpha = 1; return;
+  }
+
+  // comparison sweep
+  if (S.siteT < T.analyze) {
+    const x = clamp(S.siteT / T.analyze) * W;
+    ovl.fillStyle = `rgba(${VIEW.scan},0.045)`; ovl.fillRect(0, 0, x, H);
+    const g = ovl.createLinearGradient(Math.max(0, x - 90), 0, x, 0);
+    g.addColorStop(0, `rgba(${VIEW.scan},0)`); g.addColorStop(1, `rgba(${VIEW.scan},0.25)`);
+    ovl.fillStyle = g; ovl.fillRect(Math.max(0, x - 90), 0, Math.min(90, x), H);
+    ovl.save(); ovl.shadowColor = `rgba(${VIEW.scan},0.95)`; ovl.shadowBlur = 10; ovl.strokeStyle = VIEW.beam; ovl.lineWidth = 1.6;
+    ovl.beginPath(); ovl.moveTo(x, 0); ovl.lineTo(x, H); ovl.stroke(); ovl.restore();
+  }
+
+  // bounding boxes
+  ovl.font = `700 ${W < 440 ? 10 : 11}px ${MONO}`; ovl.textBaseline = 'middle'; ovl.textAlign = 'left';
+  for (const d of site.defects) {
+    const a = S.siteT - d.trig; if (a < 0) continue;
+    const e = easeOutCubic(clamp(a / 420)), grow = lerp(1.9, 1, e);
+    const bw = d.box.w * s, bh = d.box.h * s, bx0 = d.box.x * s, by0 = d.box.y * s;
+    const cx = bx0 + bw / 2, cy = by0 + bh / 2, w = bw * grow, h = bh * grow, x = cx - w / 2, y = cy - h / 2;
+    const col = d.killer ? VIEW.bad : VIEW.warn, pulse = a > 900 ? 0.88 + 0.12 * Math.sin(S.clock / 220) : 1;
+    ovl.globalAlpha = op * e * pulse;
+    ovl.fillStyle = `rgba(${col},${bw * bh > 9000 ? 0.04 : 0.10})`; ovl.fillRect(x, y, w, h);
+    ovl.strokeStyle = `rgba(${col},0.55)`; ovl.lineWidth = 1; ovl.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    const len = clamp(Math.min(w, h) * 0.38, 8, 18);
+    brackets(ovl, x, y, w, h, len);
+    ovl.strokeStyle = 'rgba(0,0,0,0.6)'; ovl.lineWidth = 5; ovl.stroke();
+    ovl.strokeStyle = `rgb(${col})`; ovl.lineWidth = 2.2; ovl.stroke();
+    if (a < 650) { // detection ping
+      const pr = a / 650; ovl.globalAlpha = op * (1 - pr);
+      ovl.strokeStyle = `rgb(${col})`; ovl.lineWidth = 1.5;
+      ovl.beginPath(); ovl.arc(cx, cy, lerp(4, Math.max(bw, bh) * 0.95, easeOutCubic(pr)), 0, TAU); ovl.stroke();
+    }
+    // label chip
+    const la = clamp((a - 220) / 260); if (la <= 0) continue;
+    const text = `${d.label.toUpperCase()}  ${Math.round(d.conf * 100)}%`;
+    const cw = ovl.measureText(text).width + 14, ch = 20;
+    // prefer above the box, then below; never sit on another defect's box (matters on narrow screens)
+    const others = site.defects.filter(o => o !== d).map(o => ({ x: o.box.x * s - 3, y: o.box.y * s - 3, w: o.box.w * s + 6, h: o.box.h * s + 6 }));
+    const hit = (px, py) => others.some(r => px < r.x + r.w && px + cw > r.x && py < r.y + r.h && py + ch > r.y);
+    const cxp = clamp(bx0, 4, W - cw - 4);
+    let cyp = by0 - ch - 5;
+    if (cyp < 4 || hit(cxp, cyp)) { const below = by0 + bh + 5; if (cyp < 4 || (below + ch <= H - 4 && !hit(cxp, below))) cyp = below; }
+    if (cyp + ch > H - 4) cyp = Math.max(4, by0 + 4);
+    cyp += (1 - la) * 6;
+    ovl.globalAlpha = op * la;
+    roundRect(ovl, cxp, cyp, cw, ch, 5); ovl.fillStyle = `rgb(${col})`; ovl.fill();
+    ovl.fillStyle = P.labelInk; ovl.fillText(text, cxp + 7, cyp + ch / 2 + 0.5);
+  }
+  ovl.globalAlpha = 1;
+}
+
+function drawFx() {
+  const ctx = fxx;
+  if (!reviewPhase()) { if (fxDirty) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, fxC.width, fxC.height); fxDirty = false; } return; }
+  fxDirty = true;
+  ctx.setTransform(fxs.dpr, 0, 0, fxs.dpr, 0, 0); ctx.clearRect(0, 0, fxs.W, fxs.H);
+  let p = 1, alpha = 0.55;
+  if (S.phase === 'zoom') { p = easeInOut(clamp(S.phaseT / (T.zoom * 0.75))); alpha = 0.9; }
+  else if (S.phase === 'retract') { p = 1 - easeInOut(clamp(S.phaseT / T.retract)); alpha = 0.9; }
+  const sr = stage.getBoundingClientRect(), wr = waferC.getBoundingClientRect(), vr = viewer.getBoundingClientRect();
+  const rc = wafer.rects[featured[S.site].idx];
+  const D = { l: wr.left - sr.left + rc.x, t: wr.top - sr.top + rc.y }; D.r = D.l + rc.w; D.b = D.t + rc.h;
+  const V = { l: vr.left - sr.left, t: vr.top - sr.top, r: vr.right - sr.left, b: vr.bottom - sr.top };
+  let n1, n2, f1, f2;
+  if (V.l >= D.r) { n1 = [D.r, D.t]; n2 = [D.r, D.b]; f1 = [V.l, V.t]; f2 = [V.l, V.b]; }
+  else if (V.t >= D.b) { n1 = [D.l, D.b]; n2 = [D.r, D.b]; f1 = [V.l, V.t]; f2 = [V.r, V.t]; }
+  else return;
+  const e1 = [lerp(n1[0], f1[0], p), lerp(n1[1], f1[1], p)], e2 = [lerp(n2[0], f2[0], p), lerp(n2[1], f2[1], p)];
+  const g = ctx.createLinearGradient((n1[0] + n2[0]) / 2, (n1[1] + n2[1]) / 2, (e1[0] + e2[0]) / 2, (e1[1] + e2[1]) / 2);
+  g.addColorStop(0, `rgba(${SCAN},${(0.3 * alpha).toFixed(3)})`); g.addColorStop(1, `rgba(${SCAN},${(0.05 * alpha).toFixed(3)})`);
+  ctx.beginPath(); ctx.moveTo(n1[0], n1[1]); ctx.lineTo(e1[0], e1[1]); ctx.lineTo(e2[0], e2[1]); ctx.lineTo(n2[0], n2[1]); ctx.closePath();
+  ctx.fillStyle = g; ctx.fill();
+  ctx.setLineDash([5, 4]); ctx.lineDashOffset = -S.clock * 0.04; ctx.lineWidth = 1;
+  ctx.strokeStyle = `rgba(${SCAN},${(0.85 * alpha).toFixed(3)})`;
+  ctx.beginPath(); ctx.moveTo(n1[0], n1[1]); ctx.lineTo(e1[0], e1[1]); ctx.moveTo(n2[0], n2[1]); ctx.lineTo(e2[0], e2[1]); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+/* ================= DOM sync ================= */
+function setStyle(el, prop, val) { const k = '_s_' + prop; if (el[k] !== val) { el.style[prop] = val; el[k] = val; } }
+function setText(el, v) { if (el._t !== v) { el.textContent = v; el._t = v; } }
+function setClass(el, name, on) { const k = '_c_' + name; if (el[k] !== on) { el.classList.toggle(name, on); el[k] = on; } }
+const statusEl = $('status'), stepEls = [...$('steps').children], summary = $('summary');
+const STATUS = { scan: ['scan', 'Scanning wafer'], lock: ['flag', 'Die flagged'], zoom: ['scan', 'Zooming to site'],
+                 analyze: ['scan', 'Comparing to reference'], hold: ['found', 'Defects classified'], retract: ['found', 'Defects classified'], summary: ['done', 'Inspection complete'] };
+const STEP = { scan: 0, lock: 1, zoom: 1, analyze: 2, hold: 3, retract: 3, summary: 4 };
+const announceEl = $('announce');
+function announce(t) { if (!quiet && !S.paused) announceEl.textContent = t; } // one short message per milestone, not a running commentary
+let shownStep = -1;
+function syncUI() {
+  const st = STATUS[S.phase]; if (statusEl.dataset.state !== st[0]) statusEl.dataset.state = st[0]; setText($('statusText'), st[1]);
+  const si = Math.min(S.site, SITES.length - 1);
+  let cur = STEP[S.phase];
+  // boxes and class labels appear during the comparison sweep, so the stepper moves on with the first detection
+  if (S.phase === 'analyze' && SITES[si].defects.some(d => d.triggered)) cur = 3;
+  if (cur !== shownStep) {
+    shownStep = cur;
+    stepEls.forEach((li, i) => { setClass(li, 'done', i < cur); setClass(li, 'active', i === cur); if (i === cur) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current'); });
+  }
+  const inspected = S.scanPos >= N ? N : Math.min(N, Math.floor(S.scanPos) + 1);
+  setText($('stDies'), String(inspected)); setText($('stTotal'), '/ ' + N);
+  setText($('stBad'), String(S.defDies)); setText($('stDef'), String(S.defects));
+  setStyle($('progress'), 'width', (S.scanPos / N * 100).toFixed(1) + '%');
+  setText($('logCount'), S.logN + (S.logN === 1 ? ' entry' : ' entries'));
+  setStyle($('logEmpty'), 'display', S.logN ? 'none' : 'block');
+  setClass($('viewerCard'), 'locked', S.phase === 'analyze' || S.phase === 'hold');
+  const sumShow = S.phase === 'summary' && S.phaseT / S.speed < 3000; // fade out so the finished map can be read
+  setClass(summary, 'show', sumShow);
+  setText($('siteTag'), reviewPhase() ? `Site ${si + 1}/${SITES.length} · Die ${dieName(featured[si].die)}` : 'No active site');
+  let cap = 'Standby. The review view opens when the scan flags a die.';
+  if (S.phase === 'lock') cap = 'Die flagged. Moving the review camera to the site.';
+  else if (S.phase === 'zoom') cap = 'Autofocusing on the flagged die…';
+  else if (S.phase === 'analyze') cap = `Comparing against golden reference… ${Math.round(clamp(S.siteT / T.analyze) * 100)}%`;
+  else if (S.phase === 'hold' || S.phase === 'retract') { const n = SITES[si].defects.length; cap = `${n} defects classified at this site.`; }
+  else if (S.phase === 'summary') {
+    const pct = ((N - S.defDies) / N * 100).toFixed(1);
+    cap = `Wafer complete: ${N} dies, ${S.defDies} defective, ${pct}% good. Replaying in ${Math.max(0, Math.ceil((T.summary - S.phaseT) / 1000 / S.speed))} s.`;
+    setText($('sumDies'), String(N)); setText($('sumBad'), String(S.defDies)); setText($('sumPass'), pct + '%');
+  }
+  setText($('caption'), cap);
+}
+
+/* ================= controls ================= */
+function setPaused(p) {
+  S.paused = p;
+  $('playLabel').textContent = p ? 'Play' : 'Pause';
+  $('btnPlay').setAttribute('aria-label', p ? 'Play animation' : 'Pause animation');
+  $('playIcon').setAttribute('d', p ? 'M4 2l10 6-10 6z' : 'M3 2h3.5v12H3zM9.5 2H13v12H9.5z');
+}
+function setSpeed(v) {
+  S.speed = [0.5, 1, 2].includes(v) ? v : 1;
+  document.querySelectorAll('#speed button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.speed === S.speed)));
+}
+$('btnPlay').addEventListener('click', () => setPaused(!S.paused));
+$('btnRestart').addEventListener('click', () => { reset(); setPaused(false); });
+$('speed').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setSpeed(+b.dataset.speed); });
+
+/* ================= main loop ================= */
+let last = 0;
+function frame(ts) {
+  requestAnimationFrame(frame); // schedule first so one bad frame cannot stop the animation
+  const dt = Math.min(50, last ? ts - last : 16); last = ts;
+  try {
+    if (layoutDirty || (window.devicePixelRatio || 1) !== lastDpr) layout();
+    if (!S.paused) update(dt * S.speed);
+    drawWafer(); drawViewer(); drawFx(); syncUI();
+  } catch (err) { console.error(err); }
+}
+
+// debug / screenshot hook, e.g. ?phase=analyze&site=1&t=1500&paused=1
+window.demo = { seek, restart: () => { reset(); setPaused(false); }, pause: () => setPaused(true), play: () => setPaused(false),
+                geom: i => ({ idx: dies[i].idx, col: dies[i].i, row: dies[i].j, rect: wafer.rects[i], center: wafer.centers[i], done: dies[i].done }),
+                state: () => ({ phase: S.phase, site: S.site, siteT: Math.round(S.siteT), scanPos: +S.scanPos.toFixed(1), defects: S.defects, defDies: S.defDies, dies: N }) };
+reset();
+setText($('stTotal'), '/ ' + N);
+{
+  const q = new URLSearchParams(location.search);
+  if (q.has('phase')) seek(q.get('phase'), +(q.get('site') || 0), +(q.get('t') || 0));
+  else if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) { seek('hold', 0, 900); setPaused(true); }
+  if (q.get('paused') === '1') setPaused(true);
+  if (q.has('speed')) setSpeed(+q.get('speed'));
+}
+// embedded: report the content height so the parent can size the iframe with no inner scrollbar
+if (document.documentElement.classList.contains('embed') && window.parent !== window) {
+  const main = document.querySelector('main');
+  const post = () => window.parent.postMessage({ type: 'wafer-demo:height', height: Math.ceil(main.getBoundingClientRect().height) }, '*');
+  new ResizeObserver(post).observe(main); post();
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') window.parent.postMessage({ type: 'wafer-demo:close' }, '*'); });
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
