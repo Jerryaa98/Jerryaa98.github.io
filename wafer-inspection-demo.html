@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
 <title>Wafer Inspection Demo</title>
+<link rel="icon" href="images/favicon-32.png" sizes="32x32">
+<link rel="icon" href="images/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="images/apple-touch-icon.png">
 <meta name="description" content="A synthetic, fully procedural animation of an automated optical wafer inspection: scan, flag a die, zoom in, and box the defects.">
 <script>
 // ?embed=1&theme=dark|light: the homepage shows this page inside its Camtek dialog, in the homepage's palette and fonts
@@ -188,22 +191,6 @@ h1{margin:0 0 14px; font-size:clamp(28px,4.6vw,46px); line-height:1.08; letter-s
 .idle b{color:var(--muted); font-weight:600; font-size:14px}
 .caption{margin:12px 0 0; min-height:22px; font:500 12.5px/1.45 var(--mono); color:var(--muted)}
 
-/* log */
-.log-card .card-h{margin-bottom:8px}
-#log{list-style:none; margin:0; padding:0; max-height:236px; overflow:auto; scrollbar-width:thin}
-#log li{
-  display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:12px; padding:9px 4px; border-top:1px solid var(--line);
-  animation:in .45s ease-out;
-}
-#log li:first-child{border-top:0}
-@keyframes in{from{opacity:0; transform:translateY(-8px)} to{opacity:1; transform:none}}
-.sev{font:700 10px/1 var(--mono); letter-spacing:.06em; text-transform:uppercase; padding:5px 7px; border-radius:6px; min-width:58px; text-align:center}
-.sev.crit{background:rgba(var(--bad-rgb),.15); color:var(--bad); border:1px solid rgba(var(--bad-rgb),.45)}
-.sev.minor{background:rgba(var(--warn-rgb),.12); color:var(--warn-ink); border:1px solid rgba(var(--warn-rgb),.4)}
-#log .what b{display:block; font-size:14px; font-weight:600}
-#log .what small{display:block; font:500 11.5px/1.3 var(--mono); color:var(--dim)}
-#log .conf{font:650 13px/1 var(--mono); color:var(--text)}
-.empty{margin:6px 4px 4px; font-size:13px; color:var(--dim)}
 
 .foot{padding:6px 0 48px; color:var(--dim); font-size:13px; max-width:78ch}
 .foot p{margin:0 0 6px}
@@ -261,7 +248,7 @@ h1{margin:0 0 14px; font-size:clamp(28px,4.6vw,46px); line-height:1.08; letter-s
         <li><b>1</b>Scan wafer</li>
         <li><b>2</b>Flag die</li>
         <li><b>3</b>Compare to reference</li>
-        <li><b>4</b>Classify &amp; log</li>
+        <li><b>4</b>Classify defects</li>
       </ol>
       <div class="controls">
         <button class="btn" id="btnPlay" type="button" aria-label="Pause animation">
@@ -324,12 +311,6 @@ h1{margin:0 0 14px; font-size:clamp(28px,4.6vw,46px); line-height:1.08; letter-s
             <canvas id="ovl" aria-hidden="true"></canvas>
           </div>
           <p class="caption" id="caption">Standby.</p>
-        </article>
-
-        <article class="card log-card">
-          <header class="card-h"><h2>Defect log</h2><span class="site-tag" id="logCount">0 entries</span></header>
-          <p class="empty" id="logEmpty">Nothing yet. Detections will be listed here as they are boxed.</p>
-          <ol id="log"></ol>
         </article>
       </div>
     </div>
@@ -612,14 +593,14 @@ function renderSiteImage(site) {
 
 /* ================= state machine ================= */
 const S = { phase: 'scan', phaseT: 0, site: 0, scanPos: 0, resolved: 0, siteT: 0, clock: 0,
-            paused: false, speed: 1, defDies: 0, defects: 0, logN: 0 };
+            paused: false, speed: 1, defDies: 0, defects: 0 };
 let needImg = false;
 
 function reset() {
   for (const d of dies) { d.done = false; d.flagged = false; d.flash = 0; }
   for (const s of SITES) for (const d of s.defects) d.triggered = false;
-  Object.assign(S, { phase: 'scan', phaseT: 0, site: 0, scanPos: 0, resolved: 0, siteT: 0, clock: 0, defDies: 0, defects: 0, logN: 0 });
-  logEl.replaceChildren(); needImg = false;
+  Object.assign(S, { phase: 'scan', phaseT: 0, site: 0, scanPos: 0, resolved: 0, siteT: 0, clock: 0, defDies: 0, defects: 0 });
+  needImg = false;
 }
 function goPhase(p) {
   S.phase = p; S.phaseT = 0;
@@ -629,26 +610,12 @@ function goPhase(p) {
   if (p === 'hold') announce(`Site ${S.site + 1}: ${SITES[S.site].defects.length} defects classified`);
   if (p === 'summary') announce('Inspection complete');
 }
-function addLog(d, si) {
-  const die = featured[si].die;
-  const li = document.createElement('li');
-  const sev = document.createElement('span'); sev.className = 'sev ' + (d.killer ? 'crit' : 'minor'); sev.textContent = d.killer ? 'Critical' : 'Minor';
-  const what = document.createElement('div'); what.className = 'what';
-  const b = document.createElement('b'); b.textContent = d.label;
-  const sm = document.createElement('small'); sm.textContent = `Site ${si + 1} · Die ${dieName(die)}`;
-  what.append(b, sm);
-  const conf = document.createElement('span'); conf.className = 'conf'; conf.textContent = Math.round(d.conf * 100) + '%';
-  li.append(sev, what, conf);
-  logEl.prepend(li);
-  while (logEl.children.length > 14) logEl.lastElementChild.remove();
-  S.logN++;
-}
 function update(dt) {
   S.phaseT += dt; S.clock += dt;
   for (const d of dies) if (d.flash > 0) d.flash = Math.max(0, d.flash - dt / 500);
   if (S.site < SITES.length && (S.phase === 'analyze' || S.phase === 'hold' || S.phase === 'retract')) {
     S.siteT += dt;
-    for (const d of SITES[S.site].defects) if (!d.triggered && S.siteT >= d.trig) { d.triggered = true; S.defects++; addLog(d, S.site); }
+    for (const d of SITES[S.site].defects) if (!d.triggered && S.siteT >= d.trig) { d.triggered = true; S.defects++; }
   }
   switch (S.phase) {
     case 'scan': {
@@ -680,7 +647,6 @@ function seek(phase, site = 0, offsetMs = 0) { // deterministic fast-forward (al
 /* ================= canvases / layout ================= */
 const stage = $('stage'), waferWrap = $('waferWrap'), waferC = $('wafer'), viewer = $('viewer'), ovlC = $('ovl'), fxC = $('fx');
 imgC = $('img');
-const logEl = $('log');
 const wctx = waferC.getContext('2d'), ovl = ovlC.getContext('2d'), fxx = fxC.getContext('2d');
 imgCtx = imgC.getContext('2d');
 const wafer = { W: 0, dpr: 1, rects: [], centers: [], bg: null, cx: 0, cy: 0, R: 0 };
@@ -932,8 +898,6 @@ function syncUI() {
   setText($('stDies'), String(inspected)); setText($('stTotal'), '/ ' + N);
   setText($('stBad'), String(S.defDies)); setText($('stDef'), String(S.defects));
   setStyle($('progress'), 'width', (S.scanPos / N * 100).toFixed(1) + '%');
-  setText($('logCount'), S.logN + (S.logN === 1 ? ' entry' : ' entries'));
-  setStyle($('logEmpty'), 'display', S.logN ? 'none' : 'block');
   setClass($('viewerCard'), 'locked', S.phase === 'analyze' || S.phase === 'hold');
   const sumShow = S.phase === 'summary' && S.phaseT / S.speed < 3000; // fade out so the finished map can be read
   setClass(summary, 'show', sumShow);

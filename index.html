@@ -11,6 +11,9 @@
   <meta property="og:url" content="https://jerryaa98.github.io/">
   <meta property="og:image" content="https://jerryaa98.github.io/images/Giries.jpeg">
   <title>Giries Abu Ayoub</title>
+  <link rel="icon" href="images/favicon-32.png" sizes="32x32">
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
 
   <!-- Apply the saved theme before first paint so there is no flash -->
   <script>
@@ -44,6 +47,7 @@
       --accent-2: #b0306c;
       --accent-3: #d98a0b;
       --accent-soft: rgba(200, 72, 26, 0.10);
+      --on-accent: #fff;
       --shadow: 0 20px 50px rgba(70, 30, 40, 0.13);
       --shadow-soft: 0 8px 24px rgba(70, 30, 40, 0.08);
       --glow: rgba(200, 72, 26, 0.26);
@@ -62,6 +66,7 @@
       --accent-2: #e8559a;
       --accent-3: #ffc861;
       --accent-soft: rgba(255, 138, 92, 0.13);
+      --on-accent: #1b0b10;
       --shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
       --shadow-soft: 0 10px 28px rgba(0, 0, 0, 0.38);
       --glow: rgba(255, 120, 90, 0.4);
@@ -97,7 +102,9 @@
       z-index: 0;
       display: block;
       pointer-events: none;
+      opacity: 0.7;   /* a backdrop, not a feature: keeps the text easy to read */
     }
+    html[data-theme="light"] #bg3d { opacity: 0.55; }
     .bg-vignette {
       position: fixed;
       inset: 0;
@@ -287,8 +294,8 @@
 
     /* One line at every width: the size follows the text column (cqi), with a vw fallback */
     .hero h1 {
-      font-size: clamp(26px, 3.9vw, 56px);
-      font-size: min(60px, 8.3cqi);
+      font-size: clamp(28px, 5vw, 68px);
+      font-size: min(68px, 10.5cqi);   /* the name is 8.5em wide, so this fills up to ~90% of the column */
       line-height: 1.05;
       letter-spacing: -0.03em;
       white-space: nowrap;
@@ -591,6 +598,10 @@
       box-shadow: var(--shadow-soft);
     }
     .pub-thumb img { width: 100%; height: auto; display: block; }
+    /* animated concept tiles (js/paper-anims.js); the paper's real figure sits in its abstract */
+    .pub-thumb.anim { position: relative; aspect-ratio: 16 / 10; background: #120c16; }
+    .pub-thumb.anim img { display: none; }
+    .pub-thumb .anim-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
     .pub-thumb .placeholder {
       height: 150px;
       display: grid;
@@ -622,6 +633,12 @@
       border-radius: 999px;
       padding: 3px 12px;
       margin-bottom: 12px;
+    }
+    .pub .venue.oral {
+      margin-left: 4px;
+      color: var(--on-accent);
+      background: linear-gradient(120deg, var(--accent), var(--accent-2));
+      border-color: transparent;
     }
 
     .pub-links { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
@@ -657,6 +674,16 @@
       border-left: 3px solid var(--accent);
       padding: 2px 0 2px 14px;
       margin: 12px 0 4px;
+    }
+    .fold .abs-fig {
+      float: right;
+      width: min(300px, 46%);
+      height: auto;
+      margin: 12px 0 8px 18px;
+      padding: 6px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
     }
     .fold pre {
       font-family: "JetBrains Mono", monospace;
@@ -713,7 +740,8 @@
       .interests, .cta { justify-content: center; }
       .scroll-hint { display: none; }
       .pub { grid-template-columns: 1fr; }
-      .pub-thumb-scene { max-width: 330px; margin: 0 auto; }
+      .pub-thumb-scene { width: 100%; max-width: 330px; margin: 0 auto; }   /* auto margins would shrink it to its (empty) content */
+      .fold .abs-fig { float: none; display: block; width: 100%; margin: 12px 0 0; }
       .section-title { font-size: 25px; }
       nav .brand { display: none; }
       nav a.navlink { padding: 7px 9px; }
@@ -767,7 +795,7 @@
         </div>
 
         <div class="hero-text">
-          <h1>Hi, I'm <span class="grad">Giries Abu Ayoub</span></h1>
+          <h1><span class="grad">Giries Abu Ayoub</span></h1>
           <p class="role">Applied AI Researcher · Computer Vision &amp; Audio</p>
           <a class="email" href="mailto:jerryabuayob@gmail.com">jerryabuayob@gmail.com</a>
 
@@ -891,44 +919,14 @@
       <div class="wrap">
         <h2 class="section-title reveal"><span class="num">04</span>Research</h2>
 
-        <!-- ---------- Conference papers ---------- -->
-        <div class="sub-label reveal">Conference Papers</div>
-
-        <article class="card pub reveal">
-          <div class="pub-thumb-scene">
-            <a class="pub-thumb tilt" href="images/axon.png" target="_blank" rel="noopener noreferrer" aria-label="Open the AXON pipeline figure">
-              <img src="images/axon.png" alt="AXON pipeline selecting supportive anchor tokens during diffusion language-model decoding" width="1061" height="536" loading="lazy">
-            </a>
-          </div>
-          <div class="pub-body">
-            <h3>Supportive Token Revealing for Fast Diffusion Language Model Decoding</h3>
-            <p class="authors"><span class="me">Giries Abu Ayoub</span>, Mario Barbara, Lluís Pastor-Pérez, Tanja Bien, Aneesh Barthakur, Alaa Maalouf, Loay Mualem</p>
-            <span class="venue">AACL-IJCNLP 2026</span>
-            <div class="pub-links">
-              <a class="chip" href="https://arxiv.org/abs/2606.04236" target="_blank" rel="noopener noreferrer">paper ↗</a>
-              <a class="chip" href="https://github.com/Jerryaa98/AXON" target="_blank" rel="noopener noreferrer">code ↗</a>
-              <button class="chip" type="button" data-toggle="axon_abs" aria-expanded="false">abstract</button>
-              <button class="chip" type="button" data-toggle="axon_bib" aria-expanded="false">bibtex</button>
-              <a class="chip" href="https://jerryaa98.github.io/AXON-website/" target="_blank" rel="noopener noreferrer">website ↗</a>
-            </div>
-            <div class="fold" id="axon_abs"><div><p class="abs">Discrete diffusion language models can generate text efficiently by updating multiple masked positions in parallel, but this introduces a quality–latency trade-off. We propose AXON, a training-free module that monitors uncertain masked tokens and selects confident anchors that can support later denoising. Across reasoning and code-generation benchmarks, AXON improves the quality–latency trade-off of existing parallel decoders, often reducing the number of function evaluations while maintaining or improving accuracy.</p></div></div>
-            <div class="fold" id="axon_bib"><div><pre>@article{ayoub2026supportive,
-  title={Supportive Token Revealing for Fast Diffusion Language Model Decoding},
-  author={Ayoub, Giries Abu and Barbara, Mario and Pastor-P{\'e}rez, Llu{\'\i}s and Bien, Tanja and Barthakur, Aneesh and Maalouf, Alaa and Mualem, Loay},
-  journal={arXiv preprint arXiv:2606.04236},
-  year={2026}
-}</pre></div></div>
-          </div>
-        </article>
-
         <!-- ---------- Thesis ---------- -->
         <div class="sub-label reveal">M.Sc. Thesis</div>
 
         <article class="card pub reveal">
           <div class="pub-thumb-scene">
-            <a class="pub-thumb tilt" href="images/bpa.png" target="_blank" rel="noopener noreferrer" aria-label="Open the Balanced Pairwise Affinities pipeline figure">
+            <div class="pub-thumb tilt" data-anim="bpa">
               <img src="images/bpa.png" alt="Pipeline adapting frozen vision-transformer features with balanced pairwise affinities" width="1600" height="900" loading="lazy">
-            </a>
+            </div>
           </div>
           <div class="pub-body">
             <h3>Few-Shot Feature Adaptation via Balanced Pairwise Affinities on Frozen Vision Transformers</h3>
@@ -939,11 +937,42 @@
               <button class="chip" type="button" data-toggle="bpa_abs" aria-expanded="false">abstract</button>
               <button class="chip" type="button" data-toggle="bpa_bib" aria-expanded="false">bibtex</button>
             </div>
-            <div class="fold" id="bpa_abs"><div><p class="abs">Few-shot classifiers built on frozen vision transformers remain sensitive to feature bias and geometric misalignment, particularly under domain shift. This work introduces a geometry-aware task adaptation framework that models balanced pairwise affinities through entropy-regularized optimal transport and a lightweight adapter. The approach reshapes the representation space without updating the backbone and extends naturally to transductive alignment between image and text embeddings, improving few-shot and zero-shot inference across diverse feature extractors.</p></div></div>
+            <div class="fold" id="bpa_abs"><div><img class="abs-fig" src="images/bpa.png" alt="Pipeline adapting frozen vision-transformer features with balanced pairwise affinities" width="1600" height="900" loading="lazy"><p class="abs">Few-shot classifiers built on frozen vision transformers remain sensitive to feature bias and geometric misalignment, particularly under domain shift. This work introduces a geometry-aware task adaptation framework that models balanced pairwise affinities through entropy-regularized optimal transport and a lightweight adapter. The approach reshapes the representation space without updating the backbone and extends naturally to transductive alignment between image and text embeddings, improving few-shot and zero-shot inference across diverse feature extractors.</p></div></div>
             <div class="fold" id="bpa_bib"><div><pre>@mastersthesis{ayoub2026fewshot,
   title={Few-Shot Feature Adaptation via Balanced Pairwise Affinities on Frozen Vision Transformers},
   author={Ayoub, Giries Abu},
   school={University of Haifa},
+  year={2026}
+}</pre></div></div>
+          </div>
+        </article>
+
+        <!-- ---------- Conference papers ---------- -->
+        <div class="sub-label reveal">Conference Papers</div>
+
+        <article class="card pub reveal">
+          <div class="pub-thumb-scene">
+            <div class="pub-thumb tilt" data-anim="axon">
+              <img src="images/axon.png" alt="AXON pipeline selecting supportive anchor tokens during diffusion language-model decoding" width="1061" height="536" loading="lazy">
+            </div>
+          </div>
+          <div class="pub-body">
+            <h3>Supportive Token Revealing for Fast Diffusion Language Model Decoding</h3>
+            <p class="authors"><span class="me">Giries Abu Ayoub</span>, Mario Barbara, Lluís Pastor-Pérez, Tanja Bien, Aneesh Barthakur, Alaa Maalouf, Loay Mualem</p>
+            <span class="venue">AACL-IJCNLP 2026</span>
+            <span class="venue oral">Oral presentation</span>
+            <div class="pub-links">
+              <a class="chip" href="https://arxiv.org/abs/2606.04236" target="_blank" rel="noopener noreferrer">paper ↗</a>
+              <a class="chip" href="https://github.com/Jerryaa98/AXON" target="_blank" rel="noopener noreferrer">code ↗</a>
+              <button class="chip" type="button" data-toggle="axon_abs" aria-expanded="false">abstract</button>
+              <button class="chip" type="button" data-toggle="axon_bib" aria-expanded="false">bibtex</button>
+              <a class="chip" href="https://jerryaa98.github.io/AXON-website/" target="_blank" rel="noopener noreferrer">website ↗</a>
+            </div>
+            <div class="fold" id="axon_abs"><div><img class="abs-fig" src="images/axon.png" alt="AXON pipeline selecting supportive anchor tokens during diffusion language-model decoding" width="1061" height="536" loading="lazy"><p class="abs">Discrete diffusion language models can generate text efficiently by updating multiple masked positions in parallel, but this introduces a quality–latency trade-off. We propose AXON, a training-free module that monitors uncertain masked tokens and selects confident anchors that can support later denoising. Across reasoning and code-generation benchmarks, AXON improves the quality–latency trade-off of existing parallel decoders, often reducing the number of function evaluations while maintaining or improving accuracy.</p></div></div>
+            <div class="fold" id="axon_bib"><div><pre>@article{ayoub2026supportive,
+  title={Supportive Token Revealing for Fast Diffusion Language Model Decoding},
+  author={Ayoub, Giries Abu and Barbara, Mario and Pastor-P{\'e}rez, Llu{\'\i}s and Bien, Tanja and Barthakur, Aneesh and Maalouf, Alaa and Mualem, Loay},
+  journal={arXiv preprint arXiv:2606.04236},
   year={2026}
 }</pre></div></div>
           </div>
@@ -954,9 +983,9 @@
 
         <article class="card pub reveal">
           <div class="pub-thumb-scene">
-            <a class="pub-thumb tilt" href="images/spur-audio.png" target="_blank" rel="noopener noreferrer" aria-label="Open the SpurAudio pipeline figure">
+            <div class="pub-thumb tilt" data-anim="spuraudio">
               <img src="images/spur-audio.png" alt="SpurAudio benchmark pipeline across foreground events and background contexts" width="1600" height="900" loading="lazy">
-            </a>
+            </div>
           </div>
           <div class="pub-body">
             <h3>SpurAudio: A Benchmark for Studying Shortcut Learning in Few-Shot Audio Classification</h3>
@@ -968,7 +997,7 @@
               <button class="chip" type="button" data-toggle="spur_abs" aria-expanded="false">abstract</button>
               <button class="chip" type="button" data-toggle="spur_bib" aria-expanded="false">bibtex</button>
             </div>
-            <div class="fold" id="spur_abs"><div><p class="abs">Few-shot classification is widely used for learning from limited labeled data, yet most evaluations implicitly assume that target concepts are independent of contextual cues. We introduce SpurAudio, a benchmark that leverages the natural separability of foreground events and background environments in audio to enable controlled evaluation of contextual shifts across support and query sets. We show that many state-of-the-art few-shot methods suffer severe performance degradation when background correlations are disrupted, including large pretrained audio foundation models. The results reveal systematic differences in how methods rely on context and motivate benchmarks that explicitly probe context dependence.</p></div></div>
+            <div class="fold" id="spur_abs"><div><img class="abs-fig" src="images/spur-audio.png" alt="SpurAudio benchmark pipeline across foreground events and background contexts" width="1600" height="900" loading="lazy"><p class="abs">Few-shot classification is widely used for learning from limited labeled data, yet most evaluations implicitly assume that target concepts are independent of contextual cues. We introduce SpurAudio, a benchmark that leverages the natural separability of foreground events and background environments in audio to enable controlled evaluation of contextual shifts across support and query sets. We show that many state-of-the-art few-shot methods suffer severe performance degradation when background correlations are disrupted, including large pretrained audio foundation models. The results reveal systematic differences in how methods rely on context and motivate benchmarks that explicitly probe context dependence.</p></div></div>
             <div class="fold" id="spur_bib"><div><pre>@article{ayoub2026spuraudio,
   title={SpurAudio: A Benchmark for Studying Shortcut Learning in Few-Shot Audio Classification},
   author={Ayoub, Giries Abu and Tukan, Morad and Mualem, Loay},
@@ -980,9 +1009,9 @@
 
         <article class="card pub reveal">
           <div class="pub-thumb-scene">
-            <a class="pub-thumb tilt" href="images/spectra.png" target="_blank" rel="noopener noreferrer" aria-label="Open the SPECTRA pipeline figure">
+            <div class="pub-thumb tilt" data-anim="spectra">
               <img src="images/spectra.png" alt="SPECTRA pipeline for fully few-shot class-incremental audio classification" width="1331" height="757" loading="lazy">
-            </a>
+            </div>
           </div>
           <div class="pub-body">
             <h3>SPECTRA: Subspace-Preserving Embedding Calibration, Transport, and Replay for Fully Few-Shot Class-Incremental Audio Classification</h3>
@@ -993,7 +1022,7 @@
               <button class="chip" type="button" data-toggle="spectra_abs" aria-expanded="false">abstract</button>
               <button class="chip" type="button" data-toggle="spectra_bib" aria-expanded="false">bibtex</button>
             </div>
-            <div class="fold" id="spectra_abs"><div><p class="abs">Fully few-shot class-incremental audio classification requires recognizing new classes from only a handful of examples per session without forgetting earlier classes or relying on a large base dataset. SPECTRA combines a lightweight embedding adapter, exemplar-free subspace feature replay, and transductive optimal-transport prototype refinement. Across NSynth-100, FSC-89, and LS-100, it improves average accuracy and reduces forgetting over current baselines.</p></div></div>
+            <div class="fold" id="spectra_abs"><div><img class="abs-fig" src="images/spectra.png" alt="SPECTRA pipeline for fully few-shot class-incremental audio classification" width="1331" height="757" loading="lazy"><p class="abs">Fully few-shot class-incremental audio classification requires recognizing new classes from only a handful of examples per session without forgetting earlier classes or relying on a large base dataset. SPECTRA combines a lightweight embedding adapter, exemplar-free subspace feature replay, and transductive optimal-transport prototype refinement. Across NSynth-100, FSC-89, and LS-100, it improves average accuracy and reduces forgetting over current baselines.</p></div></div>
             <div class="fold" id="spectra_bib"><div><pre>@article{ayoub2026spectra,
   title={SPECTRA: Subspace-Preserving Embedding Calibration, Transport, and Replay for Fully Few-Shot Class-Incremental Audio Classification},
   author={Ayoub, Giries Abu and Mualem, Loay and Korman, Simon},
@@ -1020,8 +1049,7 @@
     <!-- =================== Footer =================== -->
     <footer>
       <div class="line"></div>
-      <p>© <span id="year">2026</span> Giries Abu Ayoub · <a href="mailto:jerryabuayob@gmail.com">jerryabuayob@gmail.com</a><br>
-        Layout inspired by <a href="https://loaym.github.io/" target="_blank" rel="noopener noreferrer">Loay Mualem's homepage</a>.</p>
+      <p>© <span id="year">2026</span> Giries Abu Ayoub · <a href="mailto:jerryabuayob@gmail.com">jerryabuayob@gmail.com</a></p>
     </footer>
   </div>
 
@@ -1081,6 +1109,7 @@
         frame.src = 'wafer-inspection-demo.html?embed=1&theme=' + theme;
         dialog.showModal();
         if (window.__pauseScene) window.__pauseScene(true);   // the 3D background is hidden behind the blur; give the demo the GPU
+        if (window.__pausePaperAnims) window.__pausePaperAnims(true);
       });
       dialog.querySelector('.demo-close').addEventListener('click', function () { dialog.close(); });
       // close on a backdrop click, but not when a drag that started inside ends outside
@@ -1090,6 +1119,7 @@
       dialog.addEventListener('close', function () {
         frame.src = 'about:blank';
         if (window.__pauseScene) window.__pauseScene(false);
+        if (window.__pausePaperAnims) window.__pausePaperAnims(false);
       });
       // the demo reports its height (no inner scrollbar) and forwards Escape, which never reaches this page while focus is inside it
       window.addEventListener('message', function (e) {
@@ -1239,6 +1269,8 @@
     })();
   </script>
 
+  <script src="js/paper-anims.js" defer></script>
+
   <!-- Three.js for the 3D background -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"
           integrity="sha384-aUS0jUAjhhBFNPifgxTHTNcsZDqkbegLd/JKEhJzK3Lyg9nFF1PZ2J++mzKwd8Kz"
@@ -1296,7 +1328,7 @@
           hot: '#fff1d6', forward: '#ffd98a', backward: '#b98cff',
           classes: ['#ffc861', '#ff8a5c', '#e8559a', '#9d6bff', '#ff6f7d'],
           neutral: '#a8959f', dust: '#8a7684',
-          neuronAlpha: 0.7, edgeAlpha: 0.08, edgeGlow: 0.6, cloudAlpha: 0.9, dustAlpha: 0.35,
+          neuronAlpha: 0.55, edgeAlpha: 0.06, edgeGlow: 0.3, cloudAlpha: 0.6, dustAlpha: 0.25,
           blending: THREE.AdditiveBlending
         },
         light: {
@@ -1304,7 +1336,7 @@
           hot: '#c8481a', forward: '#d2400f', backward: '#6a3fd0',
           classes: ['#d98a0b', '#c8481a', '#b0306c', '#6a3fd0', '#d23a4f'],
           neutral: '#9c8590', dust: '#b5a3ad',
-          neuronAlpha: 0.7, edgeAlpha: 0.1, edgeGlow: 0.55, cloudAlpha: 0.85, dustAlpha: 0.5,
+          neuronAlpha: 0.5, edgeAlpha: 0.07, edgeGlow: 0.28, cloudAlpha: 0.55, dustAlpha: 0.35,
           blending: THREE.NormalBlending
         }
       };
@@ -1465,7 +1497,7 @@
         if (refr[j] > 0) return;
         act[j] = 1; pot[j] = 0; refr[j] = 0.3;
         var list = dir > 0 ? outE[j] : inE[j];
-        for (var i = 0; i < list.length; i++) if (Math.random() < 0.8) spawn(list[i], dir);
+        for (var i = 0; i < list.length; i++) if (Math.random() < 0.55) spawn(list[i], dir);
       }
       function fireInLayer(li, dir) {
         li = Math.max(0, Math.min(LAST, li));
@@ -1484,7 +1516,7 @@
             pT[s] += dt * pV[s];
             if (pT[s] >= 1) {
               var node = pDir[s] > 0 ? eB[e] : eA[e];
-              pot[node] += 0.45 + Math.random() * 0.7;
+              pot[node] += 0.3 + Math.random() * 0.5;
               act[node] = Math.max(act[node], 0.35);
               if (pot[node] >= 1) fire(node, pDir[s]);
               pE[s] = -1;
@@ -1498,9 +1530,9 @@
           pulses.pos[s * 3 + 2] = nZ[a] + (nZ[b] - nZ[a]) * f;
           var c = pDir[s] > 0 ? C.forward : C.backward;
           pulses.rgba[o] = c[0]; pulses.rgba[o + 1] = c[1]; pulses.rgba[o + 2] = c[2];
-          pulses.rgba[o + 3] = 1;
-          pulses.size[s] = 0.7;
-          eGlow[e] = Math.max(eGlow[e], 0.85);
+          pulses.rgba[o + 3] = 0.75;
+          pulses.size[s] = 0.5;
+          eGlow[e] = Math.max(eGlow[e], 0.7);
         }
         touch(pulses);
       }
@@ -1510,11 +1542,11 @@
         for (var j = 0; j < N; j++) {
           act[j] *= da; pot[j] *= dp; refr[j] -= dt;
           var x = act[j], o = j * 4, k = j * 3;
-          neurons.rgba[o]     = nBase[k]     + (C.hot[0] - nBase[k]) * x * 0.85;
-          neurons.rgba[o + 1] = nBase[k + 1] + (C.hot[1] - nBase[k + 1]) * x * 0.85;
-          neurons.rgba[o + 2] = nBase[k + 2] + (C.hot[2] - nBase[k + 2]) * x * 0.85;
+          neurons.rgba[o]     = nBase[k]     + (C.hot[0] - nBase[k]) * x * 0.6;
+          neurons.rgba[o + 1] = nBase[k + 1] + (C.hot[1] - nBase[k + 1]) * x * 0.6;
+          neurons.rgba[o + 2] = nBase[k + 2] + (C.hot[2] - nBase[k + 2]) * x * 0.6;
           neurons.rgba[o + 3] = pal.neuronAlpha + (1 - pal.neuronAlpha) * x;
-          neurons.size[j] = (nL[j] === 3 || nL[j] === 4 ? 0.8 : 0.55) + 1.2 * x;
+          neurons.size[j] = (nL[j] === 3 || nL[j] === 4 ? 0.8 : 0.55) + 0.6 * x;
         }
         touch(neurons);
       }
@@ -1526,9 +1558,9 @@
           var g = eGlow[e], alpha = pal.edgeAlpha + pal.edgeGlow * g;
           for (var v = 0; v < 2; v++) {
             var o = e * 8 + v * 4, k = e * 6 + v * 3;
-            eCol[o]     = eBase[k]     + (C.hot[0] - eBase[k]) * g * 0.6;
-            eCol[o + 1] = eBase[k + 1] + (C.hot[1] - eBase[k + 1]) * g * 0.6;
-            eCol[o + 2] = eBase[k + 2] + (C.hot[2] - eBase[k + 2]) * g * 0.6;
+            eCol[o]     = eBase[k]     + (C.hot[0] - eBase[k]) * g * 0.4;
+            eCol[o + 1] = eBase[k + 1] + (C.hot[1] - eBase[k + 1]) * g * 0.4;
+            eCol[o + 2] = eBase[k + 2] + (C.hot[2] - eBase[k + 2]) * g * 0.4;
             eCol[o + 3] = alpha;
           }
         }
@@ -1656,22 +1688,22 @@
           var y = window.scrollY || 0, dy = y - lastScroll;
           lastScroll = y;
           if (dy) {
-            drive = Math.min(drive + Math.min(Math.abs(dy), 300) * 0.03, 24);
+            drive = Math.min(drive + Math.min(Math.abs(dy), 300) * 0.012, 8);
             driveDir = dy > 0 ? 1 : -1;
           }
-          var spikes = Math.min(10, Math.floor(drive));
+          var spikes = Math.min(3, Math.floor(drive));
           drive -= spikes;
           for (var s = 0; s < spikes; s++) fireInLayer(layerNear(focusY + driveDir * 3), driveDir);
 
           /* a little spontaneous activity so it never looks dead */
-          ambient += dt * 1.8;
+          ambient += dt * 0.8;
           while (ambient >= 1) {
             ambient -= 1;
             fireInLayer(layerNear(focusY) - (Math.random() < 0.5 ? 1 : 0), Math.random() < 0.85 ? 1 : -1);
           }
           if (!introFired && t > 0.4) {
             introFired = true;
-            for (var v = 0; v < 18; v++) fireInLayer(0, 1);
+            for (var v = 0; v < 8; v++) fireInLayer(0, 1);
           }
         }
 
@@ -1681,8 +1713,8 @@
         updateCloud(t, compression(focusY));
 
         net.rotation.y = Math.sin(t * 0.12) * 0.1;
-        camera.position.x += (mouseX * 2.4 - camera.position.x) * 0.04;
-        camera.position.y += (focusY + 6 - mouseY * 1.4 - camera.position.y) * 0.08;
+        camera.position.x += (mouseX * 1.2 - camera.position.x) * 0.03;
+        camera.position.y += (focusY + 6 - mouseY * 0.7 - camera.position.y) * 0.08;
         camera.lookAt(0, focusY - 3, NET_Z);
         renderer.render(scene, camera);
       }
