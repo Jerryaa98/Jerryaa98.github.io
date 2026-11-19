@@ -426,6 +426,12 @@
     .exp-card .dates { color: var(--text-soft); font-size: 13px; margin: 0; }
     .exp-card .desc { margin: 12px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--text); text-wrap: balance; }
     .exp-card .roles { list-style: none; margin: 4px 0 0; padding: 0; }
+    .exp-card .co-link { position: relative; z-index: 1; color: inherit; }
+    .exp-card .logos .co-link { display: inline-flex; max-width: 82%; }
+    .exp-card .logos .co-link img { height: 76px; width: auto; max-width: 100%; object-fit: contain; }   /* fixed height: the SVG logo has no size of its own */
+    .exp-card h3 .co-link:hover { color: var(--accent); }
+    .exp-card h3 .ext { font-size: 0.8em; color: var(--text-soft); }
+    .exp-card h3 .co-link:hover .ext { color: var(--accent); }
     .exp-card .roles li { padding: 7px 0; border-top: 1px solid var(--border); }
     .exp-card .roles li:first-child { border-top: 0; padding-top: 0; }
 
@@ -849,8 +855,8 @@
         <h2 class="section-title reveal"><span class="num">01</span>Experience</h2>
         <div class="exp-grid">
           <div class="card exp-card tilt reveal has-demo">
-            <div class="logos"><img src="images/camtek.svg" alt="Camtek" loading="lazy"></div>
-            <h3>Camtek</h3>
+            <div class="logos"><a class="co-link" href="https://www.camtek.com" target="_blank" rel="noopener noreferrer" tabindex="-1" aria-hidden="true"><img src="images/camtek.svg" alt="Camtek" loading="lazy"></a></div>
+            <h3><a class="co-link" href="https://www.camtek.com" target="_blank" rel="noopener noreferrer">Camtek<span class="ext" aria-hidden="true"> ↗</span></a></h3>
             <p class="role-line">Applied AI Researcher · Full-time</p>
             <p class="dates">Aug 2026 — Present</p>
             <p class="desc">I work on wafer inspection and defect detection using computer vision and deep learning.</p>
@@ -871,8 +877,8 @@
           </div>
 
           <div class="card exp-card tilt reveal">
-            <div class="logos"><img src="images/auura.jpeg" alt="Auura" loading="lazy"></div>
-            <h3>Auura Inc.</h3>
+            <div class="logos"><a class="co-link" href="https://myauura.com" target="_blank" rel="noopener noreferrer" tabindex="-1" aria-hidden="true"><img src="images/auura.jpeg" alt="Auura" loading="lazy"></a></div>
+            <h3><a class="co-link" href="https://myauura.com" target="_blank" rel="noopener noreferrer">Auura Inc.<span class="ext" aria-hidden="true"> ↗</span></a></h3>
             <p class="role-line">ML / Backend Engineer · Internship</p>
             <p class="dates">Jun 2025 — Oct 2025</p>
             <p class="desc">I worked on an AI-enhanced web scraping system for curating and classifying funding opportunities.</p>
